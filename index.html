@@ -195,8 +195,16 @@ window.addEventListener('DOMContentLoaded', function() {
 <script src="js/supabase-config.js?v=2"></script>
 <script src="js/app-supabase.js?v=2"></script>
 <script>
+// 先强制注销所有旧 Service Worker，然后注册新版本
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/flea-market/sw.js').catch(() => {});
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    registrations.forEach(function(reg) { reg.unregister(); });
+  }).finally(function() {
+    // 延迟注册新 SW，确保旧的全部清除
+    setTimeout(function() {
+      navigator.serviceWorker.register('/flea-market/sw.js?v=3').catch(function(){});
+    }, 500);
+  });
 }
 </script>
 </body>
