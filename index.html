@@ -44,10 +44,7 @@
 
   <!-- ===== DETAIL ===== -->
   <div id="page-detail" class="page">
-    <div class="nav-bar">
-      <div class="nav-back" onclick="App.navBack()">←</div>
-      商品详情
-    </div>
+    <div class="nav-bar"><div class="nav-back" onclick="App.navBack()">←</div>商品详情</div>
     <div class="main-content" id="detailContent"></div>
     <div class="detail-bottom-bar" id="detailBottom"></div>
   </div>
@@ -66,22 +63,13 @@
   <!-- ===== MESSAGES ===== -->
   <div id="page-messages" class="page">
     <div class="nav-bar">消息</div>
-    <div class="main-content" id="messagesContent">
-      <div class="empty">
-        <div class="empty-icon">💬</div>
-        <div class="empty-desc">登录后可查看消息</div>
-        <button class="btn-primary" style="width:auto;padding:8px 30px;margin:0" onclick="App.mockLogin()">模拟登录</button>
-      </div>
-    </div>
+    <div class="main-content" id="messagesContent"></div>
     <div class="tab-bar" id="tabMessages"></div>
   </div>
 
   <!-- ===== CHAT ===== -->
   <div id="page-chat" class="page">
-    <div class="nav-bar">
-      <div class="nav-back" onclick="App.navTo('messages')">←</div>
-      <span id="chatTitle">聊天</span>
-    </div>
+    <div class="nav-bar"><div class="nav-back" onclick="App.navTo('messages')">←</div><span id="chatTitle">聊天</span></div>
     <div class="chat-area" id="chatArea"></div>
     <div class="chat-input-bar">
       <input class="chat-input" placeholder="输入消息..." id="chatInputField">
@@ -97,10 +85,7 @@
     </div>
     <div class="main-content">
       <div class="history-block">
-        <div class="history-top">
-          <span class="ht">🕐 最近搜索</span>
-          <button class="hc" onclick="App.clearHistory()">清除</button>
-        </div>
+        <div class="history-top"><span class="ht">🕐 最近搜索</span><button class="hc" onclick="App.clearHistory()">清除</button></div>
         <div class="history-tags" id="historyTags"></div>
       </div>
       <div class="waterfall" id="searchResults" style="padding:0 16px"></div>
@@ -110,13 +95,8 @@
   <!-- ===== FAVORITES ===== -->
   <div id="page-favorites" class="page">
     <div class="nav-bar"><div class="nav-back" onclick="App.navTo('user')">←</div>我的收藏</div>
-    <div class="main-content">
-      <div class="feed"><div class="waterfall" id="favList"></div></div>
-      <div class="empty" id="favEmpty">
-        <div class="empty-icon">⭐</div>
-        <div class="empty-title">还没有收藏</div>
-        <div class="empty-desc">去逛逛发现心仪的宝贝吧</div>
-      </div>
+    <div class="main-content"><div class="feed"><div class="waterfall" id="favList"></div></div>
+      <div class="empty" id="favEmpty"><div class="empty-icon">⭐</div><div class="empty-title">还没有收藏</div><div class="empty-desc">去逛逛发现心仪的宝贝吧</div></div>
     </div>
   </div>
 
@@ -130,11 +110,7 @@
     </div>
     <div class="main-content">
       <div class="feed"><div class="waterfall" id="myPubList"></div></div>
-      <div class="empty" id="myPubEmpty">
-        <div class="empty-icon">📦</div>
-        <div class="empty-title">还没有发布过</div>
-        <div class="empty-desc">把闲置物品分享给需要的同学</div>
-      </div>
+      <div class="empty" id="myPubEmpty"><div class="empty-icon">📦</div><div class="empty-title">还没有发布过</div><div class="empty-desc">把闲置分享给需要的同学</div></div>
     </div>
   </div>
 
@@ -146,8 +122,8 @@
         <div class="user-info-row">
           <div class="user-avatar-big" id="userAvatar">👤</div>
           <div>
-            <div class="user-name-big" id="userName">点击登录</div>
-            <div class="user-sub" id="userSchoolId">登录后使用完整功能</div>
+            <div class="user-name-big" id="userName">未登录</div>
+            <div class="user-sub" id="userSubInfo">注册/登录后使用完整功能</div>
           </div>
         </div>
       </div>
@@ -159,31 +135,45 @@
         <div class="stat-item"><div class="stat-num" id="statFav">0</div><div class="stat-label">收藏</div></div>
       </div>
       <div class="menu-group">
-        <div class="menu-row" onclick="App.navTo('mypublish')">
-          <div class="menu-icon-wrap green">📦</div>
-          <span class="menu-label">我发布的</span><span class="menu-arrow">›</span>
-        </div>
-        <div class="menu-row" onclick="App.navTo('favorites')">
-          <div class="menu-icon-wrap orange">⭐</div>
-          <span class="menu-label">我的收藏</span><span class="menu-arrow">›</span>
-        </div>
-        <div class="menu-row" onclick="App.navTo('messages')">
-          <div class="menu-icon-wrap blue">💬</div>
-          <span class="menu-label">我的消息</span><span class="menu-arrow">›</span>
-        </div>
+        <div class="menu-row" onclick="App.navTo('mypublish')"><div class="menu-icon-wrap green">📦</div><span class="menu-label">我发布的</span><span class="menu-arrow">›</span></div>
+        <div class="menu-row" onclick="App.navTo('favorites')"><div class="menu-icon-wrap orange">⭐</div><span class="menu-label">我的收藏</span><span class="menu-arrow">›</span></div>
+        <div class="menu-row" onclick="App.navTo('messages')"><div class="menu-icon-wrap blue">💬</div><span class="menu-label">我的消息</span><span class="menu-arrow">›</span></div>
       </div>
-      <div id="logoutSection" style="text-align:center;padding:20px;cursor:pointer;color:#bbb;font-size:13px;display:none" onclick="App.logout()">退出登录</div>
+      <div id="userActionArea" style="text-align:center;padding:20px">
+        <button class="btn-primary" style="width:auto;padding:10px 40px;margin:0" onclick="App.showAuth('login')">📧 邮箱登录 / 注册</button>
+      </div>
+      <div id="logoutSection" style="text-align:center;padding:10px;cursor:pointer;color:#bbb;font-size:13px;display:none" onclick="App.logout()">退出登录</div>
     </div>
     <div class="tab-bar" id="tabUser"></div>
   </div>
 
-  <div class="toast" id="toast"></div>
-  <div class="modal-overlay" id="modalOverlay" onclick="App.closeModal()">
-    <div class="modal-sheet" id="modalSheet" onclick="event.stopPropagation()"></div>
+  <!-- ===== AUTH PAGE ===== -->
+  <div id="page-auth" class="page">
+    <div class="nav-bar"><div class="nav-back" onclick="App.closeAuth()">←</div><span id="authTitle">登录</span></div>
+    <div class="main-content" style="padding:20px">
+      <div id="authFormLogin">
+        <div class="form-block"><label class="form-label">邮箱</label><input class="form-input" id="loginEmail" type="email" placeholder="输入邮箱"></div>
+        <div class="form-block"><label class="form-label">密码</label><input class="form-input" id="loginPass" type="password" placeholder="输入密码"></div>
+        <button class="btn-submit" onclick="App.doLogin()">登录</button>
+        <div style="text-align:center;color:#999;font-size:13px;margin-top:10px">还没有账号？<span style="color:#07c160;cursor:pointer" onclick="App.showAuth('register')">去注册</span></div>
+      </div>
+      <div id="authFormRegister" style="display:none">
+        <div class="form-block"><label class="form-label">邮箱</label><input class="form-input" id="regEmail" type="email" placeholder="输入邮箱"></div>
+        <div class="form-block"><label class="form-label">密码（至少6位）</label><input class="form-input" id="regPass" type="password" placeholder="设置密码"></div>
+        <div class="form-block"><label class="form-label">昵称</label><input class="form-input" id="regNickname" placeholder="你的昵称"></div>
+        <div class="form-block"><label class="form-label">学号（选填）</label><input class="form-input" id="regSchoolId" placeholder="学号，用于认证身份"></div>
+        <button class="btn-submit" onclick="App.doRegister()" id="regBtn">注册</button>
+        <div style="text-align:center;color:#999;font-size:13px;margin-top:10px">已有账号？<span style="color:#07c160;cursor:pointer" onclick="App.showAuth('login')">去登录</span></div>
+      </div>
+    </div>
   </div>
+
+  <div class="toast" id="toast"></div>
 </div>
 
-<script src="js/app.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/app-supabase.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
