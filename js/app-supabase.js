@@ -4,6 +4,10 @@
    ============================================================ */
 
 // ==================== SUPABASE CLIENT ====================
+if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('xxxxxxxxxxxx')) {
+  document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:sans-serif"><h2>Supabase 未配置</h2><p>请在 js/supabase-config.js 中填入你的 Supabase URL 和 anon key</p></div>';
+  throw new Error('Supabase 未配置');
+}
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ==================== CONSTANTS ====================
@@ -79,11 +83,21 @@ const App = {
   currentChatUser: null,
 
   async init() {
-    await restoreSession();
+    try {
+      await restoreSession();
+    } catch (e) {
+      console.warn('会话恢复失败:', e.message);
+    }
     this.renderCategories();
-    this.renderHome();
     this.buildTabBars();
     this.renderSearchHistory();
+    try {
+      await this.renderHome();
+    } catch (e) {
+      console.warn('加载商品失败:', e.message);
+      document.getElementById('homeList').innerHTML = '';
+      document.getElementById('homeEmpty').style.display = 'flex';
+    }
     this.updateUserUI();
 
     const si = document.getElementById('searchInput');
@@ -135,10 +149,10 @@ const App = {
   // ========== Render Home ==========
   async renderHome() {
     let query = supabase.from('products').select('*').eq('status', 'selling').order('created_at', { ascending: false });
-
     if (this.currentCat) query = query.eq('category', this.currentCat);
 
-    const { data: products } = await query;
+    const { data: products, error } = await query;
+    if (error) { console.warn('查询商品失败:', error.message); return; }
 
     const container = document.getElementById('homeList');
     const empty = document.getElementById('homeEmpty');
