@@ -8,7 +8,13 @@ if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('xxxxxxxxxxxx')
   document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:sans-serif"><h2>Supabase 未配置</h2><p>请在 js/supabase-config.js 中填入你的 Supabase URL 和 anon key</p></div>';
   throw new Error('Supabase 未配置');
 }
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase;
+try {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+} catch (e) {
+  document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:sans-serif"><h2>初始化失败</h2><p>' + e.message + '</p></div>';
+  throw e;
+}
 
 // ==================== CONSTANTS ====================
 const CATEGORY_MAP = {
@@ -83,16 +89,19 @@ const App = {
   currentChatUser: null,
 
   async init() {
-    try {
-      await restoreSession();
-    } catch (e) {
-      console.warn('会话恢复失败:', e.message);
-    }
+    // 先渲染页面骨架，不阻塞
     this.renderCategories();
     this.buildTabBars();
     this.renderSearchHistory();
+    this.updateUserUI();
+
+    // 后台恢复会话
+    restoreSession().catch(e => console.warn('会话恢复失败:', e.message));
+
+    // 加载商品（带超时保护）
+    const timeout = new Promise((_, r) => setTimeout(() => r(new Error('timeout')), 8000));
     try {
-      await this.renderHome();
+      await Promise.race([this.renderHome(), timeout]);
     } catch (e) {
       console.warn('加载商品失败:', e.message);
       document.getElementById('homeList').innerHTML = '';
