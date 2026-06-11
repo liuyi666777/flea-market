@@ -16,10 +16,22 @@
 <div id="debugBar" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#333;color:#0f0;font-size:11px;padding:2px 8px;font-family:monospace;max-width:480px;margin:0 auto">⏳ HTML 加载成功</div>
 <script>
 document.getElementById('debugBar').textContent = '⏳ 开始加载脚本...';
-window.onerror = function(m) {
+window.onerror = function(m, src, line, col, err) {
   var d = document.getElementById('debugBar');
-  if (d) d.textContent = '❌ JS错误: ' + m;
+  if (d) d.innerHTML = '❌ JS错误: ' + m + '<br><small>' + src + ':' + line + ':' + col + '</small>';
+  return false;
 };
+window.addEventListener('unhandledrejection', function(e) {
+  var d = document.getElementById('debugBar');
+  if (d) d.innerHTML = '❌ 异步错误: ' + (e.reason ? e.reason.message : '') + '<br><small>stack: ' + (e.reason && e.reason.stack ? e.reason.stack.split('\n').slice(0,2).join('<br>') : '') + '</small>';
+});
+// 检查 supabase SDK 是否加载
+window.addEventListener('DOMContentLoaded', function() {
+  if (typeof window.supabase === 'undefined') {
+    var d = document.getElementById('debugBar');
+    if (d) d.innerHTML = '❌ supabase.min.js 未加载！请检查文件是否存在';
+  }
+});
 </script>
 <div id="app">
   <div class="status-bar" id="statusBar"><span>9:41</span><span>●●●●○ 📶 🔋</span></div>

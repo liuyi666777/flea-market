@@ -5,12 +5,19 @@
 
 // ==================== DEBUG ====================
 function dbg(msg) { const el = document.getElementById('debugBar'); if (el) el.textContent = msg; }
+
+(function() {
+try {
 dbg('① 检查配置...');
 
 // ==================== SUPABASE CLIENT ====================
 if (typeof SUPABASE_URL === 'undefined' || SUPABASE_URL.includes('xxxxxxxxxxxx')) {
   document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:sans-serif"><h2>Supabase 未配置</h2><p>请在 js/supabase-config.js 中填入你的 Supabase URL 和 anon key</p></div>';
   throw new Error('Supabase 未配置');
+}
+if (typeof window.supabase === 'undefined') {
+  document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:sans-serif"><h2>SDK 未加载</h2><p>js/supabase.min.js 加载失败，请检查网络或文件</p></div>';
+  throw new Error('window.supabase 不存在，supabase.min.js 未加载');
 }
 dbg('② 创建客户端...');
 let supabase;
@@ -737,16 +744,19 @@ const App = {
         <button class="btn-primary" style="width:auto;padding:10px 40px;margin:0" onclick="App.showAuth('register')">📧 注册新账号</button>`;
 
       // Load stats
-      const { count: sellCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id).eq('status', 'selling');
-      const { count: soldCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id).eq('status', 'sold');
-      const { count: favCount } = await supabase.from('favorites').select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id);
-
-      document.getElementById('statSell').textContent = sellCount || 0;
-      document.getElementById('statSold').textContent = soldCount || 0;
-      document.getElementById('statFav').textContent = favCount || 0;
+      try {
+        const { count: sellCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id).eq('status', 'selling');
+        const { count: soldCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id).eq('status', 'sold');
+        const { count: favCount } = await supabase.from('favorites').select('*', { count: 'exact', head: true })
+          .eq('user_id', currentUser.id);
+        document.getElementById('statSell').textContent = sellCount || 0;
+        document.getElementById('statSold').textContent = soldCount || 0;
+        document.getElementById('statFav').textContent = favCount || 0;
+      } catch (e) {
+        console.warn('加载统计数据失败:', e.message);
+      }
     } else {
       document.getElementById('userName').textContent = '未登录';
       document.getElementById('userSubInfo').textContent = '注册/登录后使用完整功能';
@@ -815,3 +825,11 @@ document.addEventListener('DOMContentLoaded', () => App.init());
 window.addEventListener('popstate', () => {
   if (App.currentPage !== 'home') App.navBack();
 });
+
+window.App = App;
+
+} catch (initErr) {
+  dbg('❌ 初始化错误: ' + initErr.message);
+  console.error(initErr);
+}
+})();
