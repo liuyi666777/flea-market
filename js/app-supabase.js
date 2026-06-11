@@ -20,9 +20,9 @@ if (typeof window.supabase === 'undefined') {
   throw new Error('window.supabase 不存在，supabase.min.js 未加载');
 }
 dbg('② 创建客户端...');
-let supabase;
+let sb;
 try {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 } catch (e) {
   document.body.innerHTML = '<div style="text-align:center;padding:60px 20px;font-family:sans-serif"><h2>初始化失败</h2><p>' + e.message + '</p></div>';
   throw e;
@@ -64,7 +64,7 @@ const LocalStore = {
 let currentUser = null;
 let currentProfile = null;
 
-supabase.auth.onAuthStateChange((event, session) => {
+sb.auth.onAuthStateChange((event, session) => {
   if (session?.user) {
     currentUser = session.user;
     loadProfile();
@@ -77,7 +77,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 // Restore session on load
 async function restoreSession() {
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession();
   if (session?.user) {
     currentUser = session.user;
     await loadProfile();
@@ -86,7 +86,7 @@ async function restoreSession() {
 
 async function loadProfile() {
   if (!currentUser) return;
-  const { data } = await supabase.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
   currentProfile = data;
 }
 
@@ -172,7 +172,7 @@ const App = {
 
   // ========== Render Home ==========
   async renderHome() {
-    let query = supabase.from('products').select('*').eq('status', 'selling').order('created_at', { ascending: false });
+    let query = sb.from('products').select('*').eq('status', 'selling').order('created_at', { ascending: false });
     if (this.currentCat) query = query.eq('category', this.currentCat);
 
     const { data: products, error } = await query;
@@ -221,17 +221,17 @@ const App = {
     this.currentDetailId = productId;
 
     // Fetch product
-    const { data: p } = await supabase.from('products').select('*').eq('id', productId).maybeSingle();
+    const { data: p } = await sb.from('products').select('*').eq('id', productId).maybeSingle();
     if (!p) { this.toast('商品不存在'); return; }
 
     // Increment view count
-    await supabase.from('products').update({ view_count: (p.view_count || 0) + 1 }).eq('id', productId);
+    await sb.from('products').update({ view_count: (p.view_count || 0) + 1 }).eq('id', productId);
     p.view_count = (p.view_count || 0) + 1;
 
     // Check if favorited
     let isFav = false;
     if (currentUser) {
-      const { count } = await supabase.from('favorites').select('*', { count: 'exact', head: true })
+      const { count } = await sb.from('favorites').select('*', { count: 'exact', head: true })
         .eq('user_id', currentUser.id).eq('product_id', productId);
       isFav = count > 0;
     }
@@ -241,7 +241,7 @@ const App = {
 
     // Fetch seller profile
     let sellerName = '匿名用户';
-    const { data: sellerProfile } = await supabase.from('profiles').select('nickname').eq('id', p.user_id).maybeSingle();
+    const { data: sellerProfile } = await sb.from('profiles').select('nickname').eq('id', p.user_id).maybeSingle();
     if (sellerProfile) sellerName = sellerProfile.nickname || '用户';
 
     document.getElementById('detailContent').innerHTML = `
@@ -294,24 +294,24 @@ const App = {
     if (!currentUser) { this.toast('请先登录'); return; }
     const pid = this.currentDetailId;
 
-    const { data: existing } = await supabase.from('favorites').select('id')
+    const { data: existing } = await sb.from('favorites').select('id')
       .eq('user_id', currentUser.id).eq('product_id', pid).maybeSingle();
 
     if (existing) {
-      await supabase.from('favorites').delete().eq('id', existing.id);
+      await sb.from('favorites').delete().eq('id', existing.id);
       this.toast('已取消收藏');
     } else {
-      await supabase.from('favorites').insert({ user_id: currentUser.id, product_id: pid });
+      await sb.from('favorites').insert({ user_id: currentUser.id, product_id: pid });
       this.toast('已收藏');
     }
     this.renderDetail(pid);
   },
 
   async toggleProductStatus(id) {
-    const { data: p } = await supabase.from('products').select('status').eq('id', id).maybeSingle();
+    const { data: p } = await sb.from('products').select('status').eq('id', id).maybeSingle();
     if (!p) return;
     const newStatus = p.status === 'selling' ? 'sold' : 'selling';
-    await supabase.from('products').update({ status: newStatus }).eq('id', id);
+    await sb.from('products').update({ status: newStatus }).eq('id', id);
     this.toast(newStatus === 'sold' ? '已标记为已售' : '已重新上架');
     this.renderDetail(id);
   },
@@ -392,7 +392,7 @@ const App = {
     if (!title) return this.toast('请输入商品标题');
     if (!price || price <= 0) return this.toast('请输入有效价格');
 
-    const { error } = await supabase.from('products').insert({
+    const { error } = await sb.from('products').insert({
       user_id: currentUser.id,
       title,
       price,
@@ -418,7 +418,7 @@ const App = {
     if (!title) return this.toast('请输入求购物品');
     if (!budget || budget <= 0) return this.toast('请输入有效预算');
 
-    const { error } = await supabase.from('want_buys').insert({
+    const { error } = await sb.from('want_buys').insert({
       user_id: currentUser.id,
       title,
       budget,
@@ -442,7 +442,7 @@ const App = {
     }
 
     // Get all messages involving current user, ordered by time
-    const { data: messages } = await supabase.from('messages')
+    const { data: messages } = await sb.from('messages')
       .select('*').or(`from_user.eq.${currentUser.id},to_user.eq.${currentUser.id}`)
       .order('created_at', { ascending: false });
 
@@ -462,7 +462,7 @@ const App = {
 
     // Fetch all partner profiles in one query
     const partnerIds = Object.keys(convMap);
-    const { data: profiles } = await supabase.from('profiles').select('id,nickname').in('id', partnerIds);
+    const { data: profiles } = await sb.from('profiles').select('id,nickname').in('id', partnerIds);
     const profileMap = {};
     if (profiles) profiles.forEach(p => { profileMap[p.id] = p; });
 
@@ -493,11 +493,11 @@ const App = {
     this.currentChatUser = partnerId;
 
     // Fetch partner name
-    const { data: profile } = await supabase.from('profiles').select('nickname').eq('id', partnerId).maybeSingle();
+    const { data: profile } = await sb.from('profiles').select('nickname').eq('id', partnerId).maybeSingle();
     document.getElementById('chatTitle').textContent = profile?.nickname || '用户';
 
     // Mark messages from partner as read
-    await supabase.from('messages').update({ is_read: true })
+    await sb.from('messages').update({ is_read: true })
       .eq('from_user', partnerId).eq('to_user', currentUser.id).eq('is_read', false);
 
     this.renderChatMessages();
@@ -509,7 +509,7 @@ const App = {
 
   async renderChatMessages() {
     if (!currentUser) return;
-    const { data: messages } = await supabase.from('messages').select('*')
+    const { data: messages } = await sb.from('messages').select('*')
       .or(`and(from_user.eq.${currentUser.id},to_user.eq.${this.currentChatUser}),and(from_user.eq.${this.currentChatUser},to_user.eq.${currentUser.id})`)
       .order('created_at', { ascending: true });
 
@@ -541,7 +541,7 @@ const App = {
     const text = input.value.trim();
     if (!text) return;
 
-    const { error } = await supabase.from('messages').insert({
+    const { error } = await sb.from('messages').insert({
       from_user: currentUser.id,
       to_user: this.currentChatUser,
       content: text,
@@ -583,7 +583,7 @@ const App = {
     if (history.length > 10) history = history.slice(0, 10);
     LocalStore.set('searchHistory', history);
 
-    const { data: products } = await supabase.from('products').select('*')
+    const { data: products } = await sb.from('products').select('*')
       .eq('status', 'selling').ilike('title', `%${keyword}%`).order('created_at', { ascending: false });
 
     document.getElementById('searchResults').innerHTML = (products || []).map((p, i) => this.productCard(p, i)).join('');
@@ -601,7 +601,7 @@ const App = {
       return;
     }
 
-    const { data: favs } = await supabase.from('favorites').select('product_id').eq('user_id', currentUser.id);
+    const { data: favs } = await sb.from('favorites').select('product_id').eq('user_id', currentUser.id);
     if (!favs || favs.length === 0) {
       document.getElementById('favList').innerHTML = '';
       document.getElementById('favEmpty').style.display = 'flex';
@@ -609,7 +609,7 @@ const App = {
     }
 
     const productIds = favs.map(f => f.product_id);
-    const { data: products } = await supabase.from('products').select('*').in('id', productIds);
+    const { data: products } = await sb.from('products').select('*').in('id', productIds);
 
     document.getElementById('favList').innerHTML = (products || []).map((p, i) => this.productCard(p, i)).join('');
     document.getElementById('favEmpty').style.display = products?.length === 0 ? 'flex' : 'none';
@@ -633,7 +633,7 @@ const App = {
       return;
     }
 
-    let query = supabase.from('products').select('*').eq('user_id', currentUser.id);
+    let query = sb.from('products').select('*').eq('user_id', currentUser.id);
     if (this.myPubTab === 'selling') query = query.eq('status', 'selling');
     else if (this.myPubTab === 'sold') query = query.eq('status', 'sold');
     query = query.order('created_at', { ascending: false });
@@ -665,7 +665,7 @@ const App = {
     const pass = document.getElementById('loginPass')?.value;
     if (!email || !pass) return this.toast('请输入邮箱和密码');
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
     if (error) {
       this.toast(error.message === 'Invalid login credentials' ? '邮箱或密码错误' : error.message);
       return;
@@ -689,7 +689,7 @@ const App = {
     btn.disabled = true;
     btn.textContent = '注册中...';
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await sb.auth.signUp({
       email,
       password: pass,
       options: { data: { nickname } },
@@ -705,7 +705,7 @@ const App = {
     // If email confirmation is not required, the trigger creates the profile automatically.
     // We also need to handle the school_id — update the profile after signup.
     if (data.user && schoolId) {
-      await supabase.from('profiles').upsert({ id: data.user.id, school_id: schoolId, nickname }, { onConflict: 'id' });
+      await sb.from('profiles').upsert({ id: data.user.id, school_id: schoolId, nickname }, { onConflict: 'id' });
     }
 
     btn.disabled = false;
@@ -724,7 +724,7 @@ const App = {
   },
 
   async logout() {
-    await supabase.auth.signOut();
+    await sb.auth.signOut();
     currentUser = null;
     currentProfile = null;
     this.updateUserUI();
@@ -745,11 +745,11 @@ const App = {
 
       // Load stats
       try {
-        const { count: sellCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
+        const { count: sellCount } = await sb.from('products').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('status', 'selling');
-        const { count: soldCount } = await supabase.from('products').select('*', { count: 'exact', head: true })
+        const { count: soldCount } = await sb.from('products').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id).eq('status', 'sold');
-        const { count: favCount } = await supabase.from('favorites').select('*', { count: 'exact', head: true })
+        const { count: favCount } = await sb.from('favorites').select('*', { count: 'exact', head: true })
           .eq('user_id', currentUser.id);
         document.getElementById('statSell').textContent = sellCount || 0;
         document.getElementById('statSold').textContent = soldCount || 0;
