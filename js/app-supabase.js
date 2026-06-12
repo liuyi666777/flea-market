@@ -48,6 +48,9 @@ const PAGE_SIZE = 20;
 const STORAGE_BUCKET = 'product-images';
 const SCHOOL_DOMAIN = '@sxast.edu.cn';
 const BANNED_WORDS = ['傻逼','操你','操你妈','妈的','他妈的','草泥马','cnm','fuck','shit','bitch','废物','垃圾货','白痴','弱智','脑残','去死','滚蛋','畜生','狗日的','贱人','骚货','婊子','妓女','约炮','裸聊','做爱','性交','色情','黄色','管理员','admin','官方','客服','系统','root'];
+const HOT_VIEW_THRESHOLD = 30;
+const HOT_FAV_THRESHOLD = 3;
+const NEW_PRODUCT_HOURS = 24;
 
 const LocalStore = {
   get(key, def) { try { const v = localStorage.getItem('fm_'+key); return v ? JSON.parse(v) : def; } catch { return def; } },
@@ -143,7 +146,7 @@ const App = {
   currentPage: 'home', currentCat: '', currentDetailId: null, currentChatUser: null,
   _page:0, _hasMore:true, _loading:false, _sortBy:'created_at', _sortDir:'desc', _filterCond:-1,
   pubType:'sell', pubImages:[], myPubTab:'selling',
-  _editingProduct:null, _homeTab:'sell', _detailImgIdx:0,
+  _editingProduct:null, _homeTab:'sell', _detailImgIdx:0, _browseHistory:null,
 
   async init() {
     dbg('④ 渲染页面...');
@@ -198,6 +201,40 @@ const App = {
   },
   async filterCat(cat) { this.currentCat=cat; this._page=0; this._hasMore=true; this.renderCategories(); document.getElementById('homeList').innerHTML=''; await this.renderHome(); },
 
+  getBrowseHistory() {
+    if (this._browseHistory !== null) return this._browseHistory;
+    this._browseHistory = LocalStore.get('browseHistory', []);
+    return this._browseHistory;
+  },
+  trackBrowseHistory(p) {
+    var h = this.getBrowseHistory();
+    h = h.filter(function(x) { return x.id !== p.id; });
+    h.unshift({ id: p.id, title: p.title, price: p.price, images: p.images, category: p.category });
+    if (h.length > 15) h = h.slice(0, 15);
+    this._browseHistory = h;
+    LocalStore.set('browseHistory', h);
+  },
+  renderBrowseHistory() {
+    var h = this.getBrowseHistory();
+    var section = document.getElementById('browseSection');
+    var scroll = document.getElementById('browseScroll');
+    if (!section || !scroll) return;
+    if (h.length === 0) { section.style.display = 'none'; return; }
+    section.style.display = 'block';
+    scroll.innerHTML = h.map(function(p) {
+      var cat = CATEGORY_MAP[p.category] || {};
+      var imgHTML = p.images && p.images.length > 0
+        ? '<img src="' + p.images[0] + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><span style="font-size:36px;display:none">' + (cat.emoji || '📦') + '</span>'
+        : '<span style="font-size:36px">' + (cat.emoji || '📦') + '</span>';
+      return '<div class="browse-card" onclick="App.navTo(\'detail\',\'' + p.id + '\')"><div class="browse-card-img">' + imgHTML + '</div><div class="browse-card-body"><div class="browse-card-title">' + App.escapeHtml(p.title) + '</div><div class="browse-card-price">¥' + p.price + '</div></div></div>';
+    }).join('');
+  },
+  clearBrowseHistory() {
+    this._browseHistory = [];
+    LocalStore.set('browseHistory', []);
+    this.renderBrowseHistory();
+  },
+
   setSort(s) {
     this._sortBy = s==='price_asc' ? 'price' : s==='price_desc' ? 'price' : 'created_at';
     this._sortDir = s==='price_asc' ? 'asc' : 'desc';
@@ -214,7 +251,7 @@ const App = {
 
   async renderHome() {
     const container = document.getElementById('homeList'), empty = document.getElementById('homeEmpty');
-    if (this._page===0) this.showSkeleton();
+    if (this._page===0) { this.showSkeleton(); this.renderBrowseHistory(); }
     if (this._homeTab==='sell') {
       let q = sb.from('products').select('*',{count:'exact'}).eq('status','selling');
       if (this.currentCat) q = q.eq('category', this.currentCat);
@@ -288,12 +325,21 @@ const App = {
 
   productCard(p,i) {
     const cat=CATEGORY_MAP[p.category]||{}, time=this.timeAgo(p.created_at), isSold=p.status==='sold';
+    var badgeHTML = '';
+    if (isSold) {
+      badgeHTML = '<div class="product-badge" style="background:rgba(0,0,0,0.5)">已售</div>';
+    } else {
+      var hoursAgo = (Date.now() - new Date(p.created_at).getTime()) / 3600000;
+      var isNew = hoursAgo < NEW_PRODUCT_HOURS;
+      var isHot = (p.view_count || 0) >= HOT_VIEW_THRESHOLD;
+      if (isHot) badgeHTML = '<div class="product-badge badge-hot">🔥 热门</div>';
+      else if (isNew) badgeHTML = '<div class="product-badge badge-new">🆕 新品</div>';
+    }
     const img = p.images&&p.images.length>0
       ? `<img src="${p.images[0]}" class="product-img-real" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="product-img-emoji" style="font-size:60px;display:none">${cat.emoji||'📦'}</div>`
       : `<div class="product-img-emoji" style="font-size:60px">${cat.emoji||'📦'}</div>`;
     return `<div class="product-card fade-in" onclick="App.navTo('detail','${p.id}')" style="animation-delay:${(i%20)*0.03}s">
-      <div class="product-img">${img}</div>
-      ${isSold?'<div class="product-badge" style="background:rgba(0,0,0,0.5)">已售</div>':''}
+      <div class="product-img">${img}${badgeHTML}</div>
       <div class="product-body"><div class="product-title">${this.escapeHtml(p.title)}</div>
       <div class="product-price"><span class="yen">¥</span>${p.price}</div>
       <div class="product-footer"><span class="product-tag">${cat.label||''}</span><span class="product-meta">👀 ${p.view_count||0} · ${time}</span></div></div></div>`;
@@ -320,7 +366,9 @@ const App = {
     let isFav=false;
     if(currentUser){const{count}=await sb.from('favorites').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id).eq('product_id',pid);isFav=count>0;}
     const isOwner=getMyId()===p.user_id, cat=CATEGORY_MAP[p.category]||{};
-    let sn='匿名用户'; const{data:sp}=await sb.from('profiles').select('nickname').eq('id',p.user_id).maybeSingle(); if(sp)sn=sp.nickname||'用户';
+    this.trackBrowseHistory(p);
+    let sn='匿名用户', sr=0, src=0; const{data:sp}=await sb.from('profiles').select('nickname,rating,rating_count').eq('id',p.user_id).maybeSingle(); if(sp){sn=sp.nickname||'用户'; sr=sp.rating||0; src=sp.rating_count||0;}
+    var ratingHTML = src > 0 ? '<div class="seller-rating">' + this.renderStars(sr) + '<span class="rating-num">' + sr.toFixed(1) + ' (' + src + '条)</span></div>' : '';
 
     var galleryHTML = '';
     var images = p.images && p.images.length > 0 ? p.images : null;
@@ -345,7 +393,7 @@ const App = {
       galleryHTML +
       `<div class="detail-card"><div style="display:flex;align-items:flex-end;gap:10px"><span class="detail-price-main">¥${p.price}</span>${p.original_price?`<span class="detail-price-orig">原价 ¥${p.original_price}</span>`:''}</div>
       <div class="detail-title-text">${this.escapeHtml(p.title)}</div><div class="detail-tag-row"><span class="detail-tag green">${cat.label}</span><span class="detail-tag blue">${CONDITION_MAP[p.condition]||'正常'}</span><span style="font-size:12px;color:#999;margin-left:auto">👀 ${p.view_count}次浏览 · ${this.timeAgo(p.created_at)}</span></div></div>
-      <div class="seller-card"><div class="seller-left"><div class="seller-avatar">👤</div><div><div class="seller-name">${this.escapeHtml(sn)}</div><div class="seller-badge">已认证</div></div></div>${!isOwner?`<button class="btn-sm-outline" onclick="App.navTo('chat','${p.user_id}')">联系卖家</button>`:`<button class="btn-sm-outline" onclick="App.navTo('edit','${p.id}')">✏️ 编辑</button>`}</div>
+      <div class="seller-card"><div class="seller-left"><div class="seller-avatar">👤</div><div><div class="seller-name">${this.escapeHtml(sn)}</div>${ratingHTML}<div class="seller-badge">已认证</div></div></div>${!isOwner?`<button class="btn-sm-outline" onclick="App.navTo('chat','${p.user_id}')">联系卖家</button>`:`<button class="btn-sm-outline" onclick="App.navTo('edit','${p.id}')">✏️ 编辑</button>`}</div>
       <div class="detail-desc-card"><div class="detail-desc-title">📝 商品描述</div><div class="detail-desc-text">${this.escapeHtml(p.description||'卖家很懒，什么都没写~').replace(/\n/g,'<br>')}</div></div>
       ${!isOwner?`<div style="text-align:right;padding:0 16px 8px"><span style="font-size:11px;color:#ccc;cursor:pointer" onclick="App.reportProduct('${p.id}')">🚩 举报</span></div>`:''}`;
     document.getElementById('detailBottom').innerHTML=currentUser?(isOwner?`
@@ -394,9 +442,13 @@ const App = {
     this.renderDetail(pid);
   },
   async toggleProductStatus(id) {
-    const{data:p}=await sb.from('products').select('status').eq('id',id).maybeSingle(); if(!p)return;
+    const{data:p}=await sb.from('products').select('status,user_id').eq('id',id).maybeSingle(); if(!p)return;
     const ns=p.status==='selling'?'sold':'selling'; await sb.from('products').update({status:ns}).eq('id',id);
-    this.toast(ns==='sold'?'已标记为已售':'已重新上架'); this.renderDetail(id);
+    this.toast(ns==='sold'?'已标记为已售':'已重新上架');
+    if (ns==='sold' && p.user_id && p.user_id !== currentUser.id) {
+      setTimeout(() => this.showRatingModal(p.user_id), 600);
+    }
+    this.renderDetail(id);
   },
 
   async reportProduct(productId) {
@@ -404,6 +456,72 @@ const App = {
     if(!currentUser){this.toast('请先登录');return;}
     const{error}=await sb.from('reports').insert({reporter_id:currentUser.id,product_id:productId,reason:reason.trim()});
     if(error){this.toast('举报失败: '+error.message);return;} this.toast('举报已提交，我们会尽快处理');
+  },
+
+  renderStars(rating) {
+    var stars = '';
+    for (var i = 1; i <= 5; i++) {
+      if (rating >= i) { stars += '<span class="rating-star filled">★</span>'; }
+      else if (rating >= i - 0.5) { stars += '<span class="rating-star half">★</span>'; }
+      else { stars += '<span class="rating-star">★</span>'; }
+    }
+    return '<span class="rating-stars">' + stars + '</span>';
+  },
+
+  _ratingTarget: null,
+  showRatingModal(targetUserId) {
+    this._ratingTarget = targetUserId;
+    var overlay = document.createElement('div');
+    overlay.className = 'modal-overlay show';
+    overlay.id = 'ratingModalOverlay';
+    overlay.innerHTML = '<div class="modal-sheet"><div class="modal-title">⭐ 评价对方</div>' +
+      '<div class="rating-modal">' +
+      '<div class="rating-prompt">给这笔交易打个分吧</div>' +
+      '<div class="rating-star-big" id="ratingStarsBig">' +
+        '<span onclick="App._setRatingScore(1)">★</span>' +
+        '<span onclick="App._setRatingScore(2)">★</span>' +
+        '<span onclick="App._setRatingScore(3)">★</span>' +
+        '<span onclick="App._setRatingScore(4)">★</span>' +
+        '<span onclick="App._setRatingScore(5)">★</span>' +
+      '</div>' +
+      '<textarea class="rating-comment-input" id="ratingComment" placeholder="写下你的评价...（选填）"></textarea>' +
+      '<button class="rating-submit-btn" onclick="App.submitRating()">提交评价</button>' +
+      '<button class="modal-btn ghost" style="margin-top:8px" onclick="App.closeRatingModal()">跳过</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) App.closeRatingModal(); });
+    this._ratingScore = 0;
+  },
+  _ratingScore: 0,
+  _setRatingScore(s) {
+    this._ratingScore = s;
+    var stars = document.querySelectorAll('#ratingStarsBig span');
+    stars.forEach(function(sp, i) { sp.classList.toggle('active', i < s); });
+  },
+  closeRatingModal() {
+    var overlay = document.getElementById('ratingModalOverlay');
+    if (overlay) overlay.remove();
+    this._ratingTarget = null;
+    this._ratingScore = 0;
+  },
+  async submitRating() {
+    if (!this._ratingTarget || this._ratingScore < 1) { this.toast('请选择评分'); return; }
+    var comment = (document.getElementById('ratingComment')?.value || '').trim();
+    var banned = hasSensitiveWord(comment);
+    if (banned) { this.toast('评价包含敏感词，请修改'); return; }
+    var { error } = await sb.from('ratings').insert({
+      from_user: currentUser.id,
+      to_user: this._ratingTarget,
+      score: this._ratingScore,
+      comment: comment
+    });
+    if (error) {
+      if (error.code === '23505') { this.toast('您已评价过该用户'); }
+      else { this.toast('评价失败: ' + error.message); }
+    } else {
+      this.toast('评价成功！');
+    }
+    this.closeRatingModal();
   },
 
   // ==================== PUBLISH ====================
