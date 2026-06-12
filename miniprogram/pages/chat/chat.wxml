@@ -1,0 +1,42 @@
+<view class="page">
+  <!-- 消息列表 -->
+  <scroll-view class="chat-list" scroll-y scroll-into-view="{{scrollToView}}" enable-back-to-top>
+    <view wx:for="{{messages}}" wx:key="_id" id="msg-{{item._id}}">
+      <!-- 时间标签 -->
+      <view class="time-label" wx:if="{{item.showTime}}">{{item.timeText}}</view>
+
+      <view class="msg-row {{item.isMine ? 'msg-mine' : 'msg-other'}}">
+        <image
+          class="chat-avatar"
+          src="{{item.isMine ? myAvatar : otherAvatar}}"
+          mode="aspectFill"
+          wx:if="{{!item.isMine}}"
+        />
+        <view class="msg-bubble {{item.isMine ? 'bubble-mine' : 'bubble-other'}}">
+          <text>{{item.content}}</text>
+        </view>
+        <image
+          class="chat-avatar"
+          src="{{item.isMine ? myAvatar : otherAvatar}}"
+          mode="aspectFill"
+          wx:if="{{item.isMine}}"
+        />
+      </view>
+    </view>
+    <view id="msg-bottom" />
+  </scroll-view>
+
+  <!-- 输入栏 -->
+  <view class="input-bar">
+    <input
+      class="chat-input"
+      placeholder="输入消息..."
+      value="{{inputText}}"
+      bindinput="onInput"
+      bindconfirm="sendMessage"
+      confirm-type="send"
+      adjust-position
+    />
+    <view class="send-btn {{inputText ? 'active' : ''}}" bindtap="sendMessage">发送</view>
+  </view>
+</view>

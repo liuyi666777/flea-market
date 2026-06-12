@@ -1,0 +1,41 @@
+<view class="page">
+  <!-- 搜索栏 -->
+  <view class="search-bar" bindtap="goSearch">
+    <view class="search-input">
+      <text class="search-icon">🔍</text>
+      <text class="search-placeholder">搜索你想要的宝贝...</text>
+    </view>
+  </view>
+
+  <!-- 分类标签 -->
+  <scroll-view class="category-scroll" scroll-x enable-flex>
+    <view
+      class="category-item {{activeCategory === item.key ? 'active' : ''}}"
+      wx:for="{{categories}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchCategory"
+    >
+      <text>{{item.icon}} {{item.label}}</text>
+    </view>
+  </scroll-view>
+
+  <!-- 商品列表 -->
+  <view class="product-grid">
+    <view class="product-col" wx:for="{{leftList}}" wx:key="_id">
+      <product-card product="{{item}}" bind:tap="goDetail" />
+    </view>
+    <view class="product-col" wx:for="{{rightList}}" wx:key="_id">
+      <product-card product="{{item}}" bind:tap="goDetail" />
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="load-more">
+    <text wx:if="{{loading}}">加载中...</text>
+    <text wx:elif="{{noMore}}">— 没有更多了 —</text>
+  </view>
+
+  <!-- 空状态 -->
+  <empty-state wx:if="{{!loading && list.length === 0}}" icon="🛒" text="还没有商品，快去发布吧~" />
+</view>

@@ -1,0 +1,52 @@
+.page {
+  min-height: 100vh;
+}
+
+.msg-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 20rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.msg-item:active {
+  background: #f9f9f9;
+}
+
+.avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  margin-right: 20rpx;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.msg-content {
+  overflow: hidden;
+}
+
+.msg-name {
+  font-size: 30rpx;
+}
+
+.msg-preview {
+  max-width: 480rpx;
+}
+
+.mt-10 { margin-top: 10rpx; }
+
+.badge {
+  min-width: 36rpx;
+  height: 36rpx;
+  padding: 0 8rpx;
+  border-radius: 18rpx;
+  background: #ee0a24;
+  color: #fff;
+  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}

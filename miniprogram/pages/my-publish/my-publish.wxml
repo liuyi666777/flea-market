@@ -1,0 +1,25 @@
+<view class="page">
+  <view class="status-tabs">
+    <view
+      class="status-tab {{activeTab === item.key ? 'active' : ''}}"
+      wx:for="{{tabs}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchTab"
+    >
+      {{item.label}}
+    </view>
+  </view>
+
+  <view wx:if="{{list.length > 0}}">
+    <view class="product-grid">
+      <view class="product-col" wx:for="{{leftList}}" wx:key="_id">
+        <product-card product="{{item}}" bind:tap="goDetail" />
+      </view>
+      <view class="product-col" wx:for="{{rightList}}" wx:key="_id">
+        <product-card product="{{item}}" bind:tap="goDetail" />
+      </view>
+    </view>
+  </view>
+  <empty-state wx:else icon="📦" text="还没有发布过商品" showBtn="{{true}}" btnText="去发布" bind:btntap="goPublish" />
+</view>

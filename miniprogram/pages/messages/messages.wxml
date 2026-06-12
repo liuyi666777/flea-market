@@ -1,0 +1,26 @@
+<view class="page">
+  <view wx:if="{{conversations.length > 0}}">
+    <view
+      class="msg-item"
+      wx:for="{{conversations}}"
+      wx:key="openid"
+      bindtap="goChat"
+      data-openid="{{item.openid}}"
+      data-product-id="{{item.productId}}"
+    >
+      <image class="avatar" src="{{item.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill" />
+      <view class="msg-content flex-1">
+        <view class="flex-between">
+          <text class="msg-name text-bold">{{item.nickName || '匿名用户'}}</text>
+          <text class="text-sm text-muted">{{item.timeAgo}}</text>
+        </view>
+        <view class="flex-between mt-10">
+          <text class="msg-preview ellipsis text-sm text-light">{{item.lastMessage}}</text>
+          <view class="badge" wx:if="{{item.unreadCount > 0}}">{{item.unreadCount > 99 ? '99+' : item.unreadCount}}</view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <empty-state wx:else icon="💬" text="暂无消息" />
+</view>

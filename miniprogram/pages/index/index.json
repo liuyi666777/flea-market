@@ -1,0 +1,8 @@
+{
+  "usingComponents": {
+    "product-card": "/components/product-card/product-card",
+    "empty-state": "/components/empty-state/empty-state"
+  },
+  "enablePullDownRefresh": true,
+  "navigationBarTitleText": "校园跳蚤市场"
+}

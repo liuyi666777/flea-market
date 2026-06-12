@@ -1,0 +1,36 @@
+.product-card {
+  background: #fff;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+}
+
+.product-img {
+  width: 100%;
+  height: 340rpx;
+  background: #f0f0f0;
+}
+
+.product-info {
+  padding: 16rpx 20rpx 20rpx;
+}
+
+.product-title {
+  font-size: 28rpx;
+  line-height: 1.4;
+  margin-bottom: 12rpx;
+  min-height: 78rpx;
+}
+
+.product-price {
+  font-size: 34rpx;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  font-size: 22rpx;
+  color: #07c160;
+  background: rgba(7, 193, 96, 0.1);
+}

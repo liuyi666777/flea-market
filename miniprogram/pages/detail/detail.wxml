@@ -1,0 +1,60 @@
+<view class="page" wx:if="{{product}}">
+  <!-- 图片轮播 -->
+  <swiper class="image-swiper" indicator-dots="{{images.length > 1}}" indicator-color="#ddd" indicator-active-color="#07c160">
+    <swiper-item wx:for="{{images}}" wx:key="index">
+      <image src="{{item}}" mode="aspectFill" class="swiper-image" bindtap="previewImage" data-index="{{index}}" />
+    </swiper-item>
+  </swiper>
+
+  <!-- 价格 & 标题 -->
+  <view class="info-section">
+    <view class="price-row flex-between">
+      <view class="price text-primary text-bold">{{priceText}}</view>
+      <view class="text-sm text-muted" wx:if="{{product.originalPrice}}">
+        原价 ¥{{product.originalPrice}}
+      </view>
+    </view>
+    <view class="title text-lg text-bold mt-15">{{product.title}}</view>
+    <view class="flex-between mt-15">
+      <view class="flex-align-center">
+        <view class="tag mr-10">{{product.categoryLabel}}</view>
+        <view class="tag">{{product.conditionLabel}}</view>
+      </view>
+      <view class="text-sm text-muted">{{product.timeAgo}} · {{product.viewCount}}次浏览</view>
+    </view>
+  </view>
+
+  <!-- 卖家信息 -->
+  <view class="info-section flex-between">
+    <view class="flex-align-center">
+      <image class="avatar" src="{{seller.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill" />
+      <view class="ml-15">
+        <view class="text-bold">{{seller.nickName || '匿名用户'}}</view>
+        <view class="text-sm text-muted mt-5" wx:if="{{seller.schoolId}}">学号: {{seller.schoolId}}</view>
+      </view>
+    </view>
+    <view class="btn btn-outline btn-sm" bindtap="contactSeller">联系卖家</view>
+  </view>
+
+  <!-- 商品描述 -->
+  <view class="info-section" wx:if="{{product.description}}">
+    <view class="section-title">商品描述</view>
+    <view class="description">{{product.description}}</view>
+  </view>
+
+  <!-- 底部操作栏 -->
+  <view class="bottom-bar">
+    <view class="fav-btn flex-center" bindtap="toggleFav">
+      <text class="like-icon {{isFav ? 'liked' : ''}}">{{isFav ? '❤️' : '🤍'}}</text>
+      <text class="text-sm">收藏</text>
+    </view>
+
+    <view class="btn btn-primary flex-1 ml-20" wx:if="{{isOwner}}" bindtap="toggleStatus">
+      {{product.status === 'selling' ? '标记已售' : '重新上架'}}
+    </view>
+
+    <view class="btn btn-primary flex-1 ml-20" wx:else bindtap="contactSeller">
+      我想要
+    </view>
+  </view>
+</view>

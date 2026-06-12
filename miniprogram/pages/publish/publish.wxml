@@ -1,0 +1,91 @@
+<view class="page">
+  <!-- 发布类型切换 -->
+  <view class="type-tabs">
+    <view class="type-tab {{currentType === 'sell' ? 'active' : ''}}" bindtap="switchType" data-type="sell">
+      卖闲置
+    </view>
+    <view class="type-tab {{currentType === 'want' ? 'active' : ''}}" bindtap="switchType" data-type="want">
+      发求购
+    </view>
+  </view>
+
+  <!-- 出售表单 -->
+  <form wx:if="{{currentType === 'sell'}}" bindsubmit="submitSell">
+    <!-- 图片上传 -->
+    <view class="form-section">
+      <view class="form-label">商品图片</view>
+      <view class="image-upload">
+        <view class="image-item" wx:for="{{images}}" wx:key="index">
+          <image src="{{item}}" mode="aspectFill" />
+          <view class="image-remove" data-index="{{index}}" catchtap="removeImage">×</view>
+        </view>
+        <view class="image-add" wx:if="{{images.length < 9}}" bindtap="chooseImage">
+          <text class="add-icon">+</text>
+          <text class="add-text">添加图片</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="form-section">
+      <view class="form-label">商品标题</view>
+      <input class="form-input" name="title" placeholder="请输入商品标题" maxlength="50" />
+    </view>
+
+    <view class="form-section">
+      <view class="form-label">商品描述</view>
+      <textarea class="form-textarea" name="description" placeholder="描述一下商品的成色、购买渠道、使用情况等..." maxlength="500" />
+    </view>
+
+    <view class="form-row">
+      <view class="form-section flex-1 mr-10">
+        <view class="form-label">售价 (元)</view>
+        <input class="form-input" name="price" type="digit" placeholder="0.00" />
+      </view>
+      <view class="form-section flex-1 ml-10">
+        <view class="form-label">原价 (元)</view>
+        <input class="form-input" name="originalPrice" type="digit" placeholder="选填" />
+      </view>
+    </view>
+
+    <view class="form-section">
+      <view class="form-label">商品分类</view>
+      <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{categoryOptions[categoryIndex] || '请选择分类'}}</view>
+      </picker>
+    </view>
+
+    <view class="form-section">
+      <view class="form-label">商品成色</view>
+      <picker mode="selector" range="{{conditionOptions}}" value="{{conditionIndex}}" bindchange="onConditionChange">
+        <view class="picker-value">{{conditionOptions[conditionIndex] || '请选择成色'}}</view>
+      </picker>
+    </view>
+
+    <button class="btn btn-primary submit-btn" form-type="submit" disabled="{{uploading}}">
+      {{uploading ? '发布中...' : '立即发布'}}
+    </button>
+  </form>
+
+  <!-- 求购表单 -->
+  <form wx:if="{{currentType === 'want'}}" bindsubmit="submitWant">
+    <view class="form-section">
+      <view class="form-label">求购物品</view>
+      <input class="form-input" name="title" placeholder="例如：二手自行车" maxlength="50" />
+    </view>
+    <view class="form-section">
+      <view class="form-label">详细描述</view>
+      <textarea class="form-textarea" name="description" placeholder="描述一下你的具体需求..." maxlength="500" />
+    </view>
+    <view class="form-section">
+      <view class="form-label">预算 (元)</view>
+      <input class="form-input" name="budget" type="digit" placeholder="0.00" />
+    </view>
+    <view class="form-section">
+      <view class="form-label">分类</view>
+      <picker mode="selector" range="{{categoryOptions}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="picker-value">{{categoryOptions[categoryIndex] || '请选择分类'}}</view>
+      </picker>
+    </view>
+    <button class="btn btn-primary submit-btn" form-type="submit">发布求购</button>
+  </form>
+</view>

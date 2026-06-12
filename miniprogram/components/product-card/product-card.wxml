@@ -1,0 +1,14 @@
+<view class="product-card" bindtap="onTap">
+  <image class="product-img" src="{{image}}" mode="aspectFill" lazy-load />
+  <view class="product-info">
+    <view class="product-title ellipsis-2">{{title}}</view>
+    <view class="flex-between">
+      <view class="product-price text-primary text-bold">{{priceText}}</view>
+      <view class="text-sm text-muted" wx:if="{{viewCount !== undefined}}">{{viewCount}}次浏览</view>
+    </view>
+    <view class="flex-between mt-10" wx:if="{{category || time}}">
+      <view class="tag" wx:if="{{category}}">{{category}}</view>
+      <view class="text-sm text-muted" wx:if="{{time}}">{{time}}</view>
+    </view>
+  </view>
+</view>

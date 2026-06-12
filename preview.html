@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>校园跳蚤市场</title>
+<style>
+/* ========== Reset & Variables ========== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #07c160;
+  --primary-light: #e8f8ef;
+  --primary-gradient: linear-gradient(135deg, #07c160 0%, #05a34f 100%);
+  --warm: #ff6b35;
+  --warm-light: #fff3ee;
+  --blue: #4e8cff;
+  --blue-light: #eef4ff;
+  --purple: #8b5cf6;
+  --purple-light: #f3f0ff;
+  --bg: #f7f8fa;
+  --card: #ffffff;
+  --text: #1a1a2e;
+  --text-secondary: #5a5a7a;
+  --text-muted: #9a9ab0;
+  --border: #f0f0f5;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+  --radius-sm: 10px;
+  --radius: 16px;
+  --radius-lg: 20px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  background: linear-gradient(135deg, #e8ecf1 0%, #dfe3e8 50%, #e8ecf1 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Phone Frame ========== */
+.phone-frame {
+  width: 390px;
+  height: 844px;
+  background: var(--bg);
+  border-radius: 40px;
+  overflow: hidden;
+  box-shadow:
+    0 0 0 3px #1a1a2e,
+    0 0 0 6px #2d2d3f,
+    0 20px 60px rgba(0,0,0,0.35);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ========== Status Bar ========== */
+.status-bar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: transparent;
+  position: relative;
+  z-index: 10;
+}
+
+/* ========== Nav Bar ========== */
+.nav-bar {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 600;
+  position: relative;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+.nav-back {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  color: #333;
+  background: rgba(0,0,0,0.04);
+  transition: background 0.2s;
+}
+.nav-back:hover { background: rgba(0,0,0,0.08); }
+
+/* ========== Page Container ========== */
+.page-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.page-content::-webkit-scrollbar { display: none; }
+
+/* ========== Home Hero ========== */
+.hero-section {
+  background: linear-gradient(135deg, #07c160 0%, #05a34f 40%, #048b42 100%);
+  padding: 0 20px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.hero-section::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0; right: 0;
+  height: 24px;
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+}
+.hero-title {
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  padding: 8px 0 4px;
+  letter-spacing: 0.5px;
+}
+.hero-subtitle {
+  color: rgba(255,255,255,0.8);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+.hero-search {
+  display: flex;
+  align-items: center;
+  height: 46px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  border-radius: 23px;
+  padding: 0 18px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.25);
+  transition: background 0.2s;
+  position: relative;
+  z-index: 1;
+}
+.hero-search:hover { background: rgba(255,255,255,0.3); }
+.hero-search svg { width: 18px; height: 18px; stroke: #fff; flex-shrink: 0; }
+.hero-search span { color: rgba(255,255,255,0.85); font-size: 14px; margin-left: 8px; }
+
+/* ========== Categories (Pill Style) ========== */
+.category-row {
+  display: flex;
+  padding: 6px 20px 16px;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-wrap: nowrap;
+}
+.category-row::-webkit-scrollbar { display: none; }
+
+.cat-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 22px;
+  font-size: 13px;
+  font-weight: 500;
+  background: #fff;
+  color: #666;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
+}
+.cat-pill .cat-emoji { font-size: 16px; line-height: 1; }
+.cat-pill:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.cat-pill.active {
+  background: #1a1a2e;
+  color: #fff;
+  border-color: #1a1a2e;
+  box-shadow: 0 4px 14px rgba(26,26,46,0.25);
+  font-weight: 600;
+}
+
+/* ========== Product Grid ========== */
+.product-feed {
+  padding: 0 16px 20px;
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 4px 12px;
+}
+.section-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.section-more {
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.waterfall {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.product-card {
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.product-card:active { transform: scale(0.97); }
+.product-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 170px;
+  overflow: hidden;
+}
+.product-img-bg {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  position: relative;
+}
+.product-img-bg.c1 { background: linear-gradient(135deg, #e8f4fd 0%, #dceaf8 100%); }
+.product-img-bg.c2 { background: linear-gradient(135deg, #fdf2e8 0%, #fce4d4 100%); }
+.product-img-bg.c3 { background: linear-gradient(135deg, #e8f8ef 0%, #d0f0df 100%); }
+.product-img-bg.c4 { background: linear-gradient(135deg, #f5f0ff 0%, #e8dff8 100%); }
+.product-img-bg.c5 { background: linear-gradient(135deg, #fef3e2 0%, #fde8c8 100%); }
+.product-img-bg.c6 { background: linear-gradient(135deg, #fce4ec 0%, #f8d0da 100%); }
+.product-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+.badge-hot { background: rgba(255,107,53,0.9); color: #fff; }
+.badge-new { background: rgba(78,140,255,0.9); color: #fff; }
+.product-info { padding: 12px 14px 14px; }
+.product-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 40px;
+}
+.product-price {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ff4d4f;
+  margin-top: 6px;
+  letter-spacing: -0.5px;
+}
+.product-price .yen { font-size: 13px; font-weight: 600; }
+.product-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.product-tag {
+  padding: 4px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: #f5f5fa;
+}
+.product-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.product-meta .dot { width: 4px; height: 4px; border-radius: 50%; background: #ddd; }
+
+/* ========== Empty State ========== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 80px 40px;
+  text-align: center;
+}
+.empty-icon-wrap {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #f0f0f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  margin-bottom: 20px;
+}
+.empty-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.empty-desc {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+
+/* ========== Bottom Nav ========== */
+.tab-bar {
+  display: flex;
+  background: #fff;
+  border-top: 1px solid transparent;
+  padding: 6px 0 22px;
+  position: relative;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.04);
+}
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  cursor: pointer;
+  color: #b0b0c0;
+  font-size: 10px;
+  font-weight: 500;
+  transition: color 0.2s;
+  position: relative;
+}
+.tab-item .tab-icon { font-size: 22px; margin-bottom: 2px; transition: transform 0.2s; }
+.tab-item.active { color: var(--primary); }
+.tab-item.active .tab-icon { transform: scale(1.1); }
+
+.tab-publish-btn {
+  position: relative;
+  top: -18px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--primary-gradient);
+  box-shadow: 0 4px 16px rgba(7,193,96,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+.tab-publish-btn:active { transform: scale(0.93); box-shadow: 0 2px 8px rgba(7,193,96,0.3); }
+
+/* ========== Detail Page ========== */
+.detail-gallery {
+  width: 100%;
+  height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 100px;
+  position: relative;
+}
+.gallery-gradient {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.05));
+}
+.gallery-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+}
+.gallery-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.2);
+}
+.gallery-dot.active { background: #fff; width: 18px; border-radius: 3px; }
+
+.detail-card {
+  background: #fff;
+  margin: 12px 16px;
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.detail-price-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.detail-price-main {
+  font-size: 32px;
+  font-weight: 800;
+  color: #ff4d4f;
+  letter-spacing: -1px;
+}
+.detail-price-original {
+  font-size: 14px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  margin-bottom: 3px;
+}
+.detail-title-text {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.tag-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.info-tag {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.info-tag.green { background: var(--primary-light); color: #048b42; }
+.info-tag.blue { background: var(--blue-light); color: #3b6de0; }
+
+.seller-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff;
+  margin: 0 16px 12px;
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+}
+.seller-left { display: flex; align-items: center; gap: 12px; }
+.seller-avatar-ring {
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #07c160, #8b5cf6);
+  padding: 2px;
+}
+.seller-avatar-inner {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffe0cc, #ffd4c4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  border: 2px solid #fff;
+}
+.seller-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.seller-badge {
+  font-size: 11px;
+  color: var(--primary);
+  background: var(--primary-light);
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-top: 3px;
+  display: inline-block;
+  font-weight: 500;
+}
+
+.detail-desc-section {
+  background: #fff;
+  margin: 0 16px 12px;
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.detail-desc-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.detail-desc-content {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.detail-bottom {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 28px;
+  background: #fff;
+  gap: 12px;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.04);
+}
+.btn-fav-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 22px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: #bbb;
+  padding: 4px 6px;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+.btn-fav-detail.liked { color: #ff4d4f; }
+.btn-fav-detail .fav-label { font-size: 10px; margin-top: 1px; color: #999; }
+.btn-want {
+  flex: 1;
+  padding: 14px;
+  background: var(--primary-gradient);
+  color: #fff;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 14px rgba(7,193,96,0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-want:active { transform: scale(0.97); }
+
+/* ========== Messages ========== */
+.msg-item {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 14px;
+}
+.msg-item:active { background: rgba(0,0,0,0.02); }
+.msg-avatar-wrap {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  flex-shrink: 0;
+  position: relative;
+}
+.msg-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #07c160;
+  border: 2px solid #fff;
+}
+.msg-body { flex: 1; min-width: 0; }
+.msg-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.msg-sender { font-size: 16px; font-weight: 600; color: var(--text); }
+.msg-time { font-size: 12px; color: var(--text-muted); }
+.msg-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.msg-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+.msg-unread {
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+/* ========== Chat ========== */
+.chat-bg {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: #edeef2;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(7,193,96,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(139,92,246,0.03) 0%, transparent 50%);
+}
+.chat-date-divider {
+  text-align: center;
+  margin: 16px 0;
+}
+.chat-date-tag {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #999;
+  background: rgba(0,0,0,0.05);
+}
+.chat-msg-row {
+  display: flex;
+  margin-bottom: 14px;
+  align-items: flex-start;
+}
+.chat-msg-row.mine { flex-direction: row-reverse; }
+.chat-avatar-sm {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.chat-bubble-wrap {
+  max-width: 72%;
+  margin: 0 10px;
+}
+.chat-bubble {
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  border-radius: 18px;
+  word-break: break-word;
+  position: relative;
+}
+.chat-bubble.other {
+  background: #fff;
+  color: #333;
+  border-top-left-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.chat-bubble.mine {
+  background: var(--primary-gradient);
+  color: #fff;
+  border-top-right-radius: 6px;
+  box-shadow: 0 2px 8px rgba(7,193,96,0.2);
+}
+.chat-input-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px 26px;
+  background: #fff;
+  gap: 10px;
+}
+.chat-input {
+  flex: 1;
+  padding: 11px 18px;
+  background: #f5f5f8;
+  border: none;
+  border-radius: 22px;
+  font-size: 14px;
+  outline: none;
+  transition: background 0.2s;
+}
+.chat-input:focus { background: #eeeef5; }
+.btn-send {
+  padding: 10px 20px;
+  background: var(--primary-gradient);
+  color: #fff;
+  border: none;
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(7,193,96,0.25);
+}
+
+/* ========== Publish ========== */
+.publish-tabs {
+  display: flex;
+  background: #fff;
+  padding: 0 20px;
+}
+.publish-tab {
+  flex: 1;
+  text-align: center;
+  padding: 16px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #888;
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  transition: all 0.2s;
+}
+.publish-tab.active {
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+
+.form-block {
+  background: #fff;
+  margin: 12px 16px;
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.form-block .label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.form-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #f7f8fa;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  color: var(--text);
+}
+.form-input:focus { border-color: var(--primary); background: #fff; }
+.form-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: #f7f8fa;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  min-height: 120px;
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.form-textarea:focus { border-color: var(--primary); background: #fff; }
+.form-select {
+  width: 100%;
+  padding: 12px 14px;
+  background: #f7f8fa;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  color: var(--text);
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.upload-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+.upload-box {
+  width: 96px; height: 96px;
+  border: 2px dashed #ddd;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #bbb;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+.upload-box:hover { border-color: var(--primary); color: var(--primary); }
+.upload-box .plus { font-size: 32px; font-weight: 300; line-height: 1; }
+.upload-box .label-sm { font-size: 11px; margin-top: 4px; }
+.btn-submit {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 20px 16px;
+  padding: 14px;
+  background: var(--primary-gradient);
+  color: #fff;
+  border: none;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(7,193,96,0.3);
+  letter-spacing: 0.5px;
+}
+
+/* ========== Search ========== */
+.search-bar-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  background: #fff;
+  gap: 12px;
+}
+.search-field {
+  flex: 1;
+  padding: 11px 16px;
+  background: #f5f5f8;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+}
+.search-cancel-btn {
+  font-size: 14px;
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-weight: 500;
+}
+.history-block { padding: 16px 20px; }
+.history-top {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.history-top .ht { font-size: 15px; font-weight: 600; }
+.history-top .hc {
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+.history-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.history-chip {
+  padding: 8px 16px;
+  background: #fff;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  border: 1px solid #eee;
+  transition: all 0.2s;
+}
+.history-chip:hover { border-color: var(--primary); color: var(--primary); }
+
+/* ========== User Center ========== */
+.user-header-wrap {
+  background: linear-gradient(135deg, #07c160 0%, #05a34f 40%, #048b42 100%);
+  padding: 20px 24px 36px;
+  position: relative;
+  overflow: hidden;
+}
+.user-header-wrap::before {
+  content: '';
+  position: absolute;
+  top: -40px; right: -40px;
+  width: 160px; height: 160px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+}
+.user-header-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: -30px; left: -20px;
+  width: 120px; height: 120px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.04);
+}
+.user-info-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+.user-avatar-big {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  border: 3px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34px;
+}
+.user-name-big { font-size: 21px; font-weight: 700; color: #fff; }
+.user-sub { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 4px; }
+
+.user-stats {
+  display: flex;
+  margin: 16px 16px;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+.stat-item {
+  flex: 1;
+  text-align: center;
+}
+.stat-num { font-size: 22px; font-weight: 700; color: var(--text); }
+.stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.stat-divider { width: 1px; background: #f0f0f5; margin: 0 10px; }
+
+.menu-group {
+  margin: 0 16px 12px;
+  background: #fff;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.menu-row {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  gap: 14px;
+}
+.menu-row:active { background: #fafafa; }
+.menu-row + .menu-row { border-top: 1px solid #f7f7fa; }
+.menu-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.menu-icon-wrap.green { background: var(--primary-light); }
+.menu-icon-wrap.orange { background: var(--warm-light); }
+.menu-icon-wrap.blue { background: var(--blue-light); }
+.menu-label { flex: 1; font-size: 15px; font-weight: 500; color: var(--text); }
+.menu-arrow { font-size: 18px; color: #ccc; }
+
+/* ========== Utility ========== */
+.page { display: none; }
+.page.visible { display: flex; flex-direction: column; height: 100%; }
+.hidden { display: none !important; }
+.divider { height: 1px; background: var(--border); margin: 0 20px; }
+.btn-sm-outline {
+  padding: 7px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.btn-sm-outline:hover { background: var(--primary-light); }
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.status-badge.selling { background: #e8f8ef; color: #07c160; }
+.status-badge.sold { background: #f5f5f5; color: #999; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+<div class="status-bar" id="statusBar"><span>9:41</span><span>●●●●○ 📶 🔋</span></div>
+
+<!-- ================================= HOME ================================= -->
+<div id="page-index" class="page visible">
+  <div class="hero-section">
+    <div class="hero-title">校园跳蚤市场</div>
+    <div class="hero-subtitle">淘好物 · 卖闲置 · 认识同学</div>
+    <div class="hero-search" onclick="navTo('search')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <span>搜索你想要的宝贝...</span>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <div class="category-row" id="catRow">
+      <div class="cat-pill active" onclick="filterCat(this,'')"><span class="cat-emoji">🔥</span>全部</div>
+      <div class="cat-pill" onclick="filterCat(this,'textbook')"><span class="cat-emoji">📚</span>教材</div>
+      <div class="cat-pill" onclick="filterCat(this,'digital')"><span class="cat-emoji">📱</span>数码</div>
+      <div class="cat-pill" onclick="filterCat(this,'living')"><span class="cat-emoji">🏠</span>生活</div>
+      <div class="cat-pill" onclick="filterCat(this,'clothing')"><span class="cat-emoji">👗</span>服饰</div>
+      <div class="cat-pill" onclick="filterCat(this,'sports')"><span class="cat-emoji">⚽</span>运动</div>
+      <div class="cat-pill" onclick="filterCat(this,'other')"><span class="cat-emoji">📦</span>其他</div>
+    </div>
+
+    <div class="product-feed">
+      <div class="section-header">
+        <span class="section-title">💎 最新发布</span>
+        <span class="section-more">查看全部 ›</span>
+      </div>
+      <div class="waterfall" id="productList"></div>
+    </div>
+    <div class="empty-state" id="emptyState" style="display:none">
+      <div class="empty-icon-wrap">🛒</div>
+      <div class="empty-title">暂无商品</div>
+      <div class="empty-desc">还没有人发布商品，来做第一个吧</div>
+    </div>
+  </div>
+  <div class="tab-bar" id="tabBar1"></div>
+</div>
+
+<!-- ================================= DETAIL ================================= -->
+<div id="page-detail" class="page">
+  <div class="nav-bar" style="background:#fff">
+    <div class="nav-back" onclick="navTo('index')">←</div>
+    商品详情
+  </div>
+  <div class="page-content">
+    <div class="detail-gallery" id="detailGallery" style="background:linear-gradient(135deg,#e8f4fd,#dceaf8)">
+      <span id="detailEmoji" style="font-size:100px">📱</span>
+      <div class="gallery-gradient"></div>
+      <div class="gallery-dots">
+        <div class="gallery-dot active"></div>
+        <div class="gallery-dot"></div>
+        <div class="gallery-dot"></div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-price-row">
+        <span class="detail-price-main" id="detailPrice">¥0.00</span>
+        <span class="detail-price-original" id="detailOrigPrice"></span>
+      </div>
+      <div class="detail-title-text" id="detailTitle"></div>
+      <div class="tag-row" id="detailTags"></div>
+    </div>
+
+    <div class="seller-card">
+      <div class="seller-left">
+        <div class="seller-avatar-ring">
+          <div class="seller-avatar-inner">👤</div>
+        </div>
+        <div>
+          <div class="seller-name" id="detailSeller">匿名用户</div>
+          <div class="seller-badge" id="detailSchoolBadge"></div>
+        </div>
+      </div>
+      <button class="btn-sm-outline" onclick="navTo('chat')">联系卖家</button>
+    </div>
+
+    <div class="detail-desc-section">
+      <div class="detail-desc-title">📝 商品描述</div>
+      <div class="detail-desc-content" id="detailDesc"></div>
+    </div>
+    <div style="height:100px"></div>
+  </div>
+  <div class="detail-bottom">
+    <button class="btn-fav-detail" id="favBtn" onclick="toggleFav()">
+      <span id="favIcon">🤍</span>
+      <span class="fav-label">收藏</span>
+    </button>
+    <button class="btn-want" onclick="navTo('chat')">💬 我想要</button>
+  </div>
+</div>
+
+<!-- ================================= PUBLISH ================================= -->
+<div id="page-publish" class="page">
+  <div class="nav-bar" style="background:#fff">发布</div>
+  <div class="publish-tabs">
+    <div class="publish-tab active" onclick="switchPub('sell',this)">📦 卖闲置</div>
+    <div class="publish-tab" onclick="switchPub('want',this)">🔍 发求购</div>
+  </div>
+  <div class="page-content">
+    <div id="sellForm">
+      <div class="form-block">
+        <div class="label">商品图片</div>
+        <div class="upload-grid">
+          <div class="upload-box"><span class="plus">+</span><span class="label-sm">添加图片</span></div>
+        </div>
+      </div>
+      <div class="form-block"><div class="label">商品标题</div><input class="form-input" placeholder="写一个吸引人的标题吧~"></div>
+      <div class="form-block"><div class="label">商品描述</div><textarea class="form-textarea" placeholder="描述一下成色、购买渠道、使用感受等..."></textarea></div>
+      <div style="display:flex;gap:12px;margin:0 16px">
+        <div class="form-block" style="flex:1;margin:0"><div class="label">售价 (元)</div><input class="form-input" type="number" placeholder="0.00"></div>
+        <div class="form-block" style="flex:1;margin:0"><div class="label">原价 (元)</div><input class="form-input" type="number" placeholder="选填"></div>
+      </div>
+      <div class="form-block"><div class="label">商品分类</div>
+        <select class="form-select"><option>📚 教材</option><option>📱 数码</option><option>🏠 生活</option><option>👗 服饰</option><option>⚽ 运动</option><option>📦 其他</option></select>
+      </div>
+      <div class="form-block"><div class="label">成色</div>
+        <select class="form-select"><option>全新</option><option>几乎全新</option><option>轻微使用痕迹</option><option>正常使用痕迹</option></select>
+      </div>
+      <button class="btn-submit">✨ 立即发布</button>
+    </div>
+    <div id="wantForm" class="hidden">
+      <div class="form-block"><div class="label">求购物品</div><input class="form-input" placeholder="比如：二手自行车"></div>
+      <div class="form-block"><div class="label">详细描述</div><textarea class="form-textarea" placeholder="说说你的具体需求..."></textarea></div>
+      <div class="form-block"><div class="label">你的预算 (元)</div><input class="form-input" type="number" placeholder="0.00"></div>
+      <div class="form-block"><div class="label">物品分类</div>
+        <select class="form-select"><option>📚 教材</option><option>📱 数码</option><option>🏠 生活</option><option>👗 服饰</option><option>⚽ 运动</option><option>📦 其他</option></select>
+      </div>
+      <button class="btn-submit">✨ 发布求购</button>
+    </div>
+  </div>
+  <div class="tab-bar" id="tabBar3"></div>
+</div>
+
+<!-- ================================= MESSAGES ================================= -->
+<div id="page-messages" class="page">
+  <div class="nav-bar" style="background:#fff">消息</div>
+  <div class="page-content">
+    <div class="msg-item" onclick="navTo('chat')">
+      <div class="msg-avatar-wrap" style="background:linear-gradient(135deg,#ffd4c4,#ffc4b0)">🙋<div class="msg-dot"></div></div>
+      <div class="msg-body">
+        <div class="msg-top-row"><span class="msg-sender">张三</span><span class="msg-time">刚刚</span></div>
+        <div class="msg-bottom-row"><span class="msg-text">你好，这个还在吗？</span><span class="msg-unread">2</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="msg-item">
+      <div class="msg-avatar-wrap" style="background:linear-gradient(135deg,#d4e4ff,#c4d8ff)">👩</div>
+      <div class="msg-body">
+        <div class="msg-top-row"><span class="msg-sender">李四</span><span class="msg-time">1小时前</span></div>
+        <div class="msg-bottom-row"><span class="msg-text">能便宜一点吗？40行不行？</span></div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="msg-item">
+      <div class="msg-avatar-wrap" style="background:linear-gradient(135deg,#e4ffd4,#d0ffc4)">👦</div>
+      <div class="msg-body">
+        <div class="msg-top-row"><span class="msg-sender">王五</span><span class="msg-time">昨天</span></div>
+        <div class="msg-bottom-row"><span class="msg-text">好的，明天中午食堂门口见</span></div>
+      </div>
+    </div>
+
+    <div class="empty-state">
+      <div class="empty-icon-wrap">💬</div>
+      <div class="empty-desc">以上为演示数据，聊天记录将实时同步</div>
+    </div>
+  </div>
+  <div class="tab-bar" id="tabBar4"></div>
+</div>
+
+<!-- ================================= CHAT ================================= -->
+<div id="page-chat" class="page">
+  <div class="nav-bar" style="background:#fff">
+    <div class="nav-back" onclick="navTo('messages')">←</div>
+    张三
+  </div>
+  <div class="chat-bg" id="chatArea">
+    <div class="chat-date-divider"><span class="chat-date-tag">今天 14:30</span></div>
+    <div class="chat-msg-row">
+      <div class="chat-avatar-sm" style="background:#ffd4c4">🙋</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble other">你好，这个还在吗？</div></div>
+    </div>
+    <div class="chat-msg-row mine">
+      <div class="chat-avatar-sm" style="background:#d4e4ff">👤</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble mine">在的，你要看看吗？</div></div>
+    </div>
+    <div class="chat-msg-row">
+      <div class="chat-avatar-sm" style="background:#ffd4c4">🙋</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble other">多少钱出？</div></div>
+    </div>
+    <div class="chat-msg-row mine">
+      <div class="chat-avatar-sm" style="background:#d4e4ff">👤</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble mine">50块，几乎全新的哦</div></div>
+    </div>
+    <div class="chat-msg-row">
+      <div class="chat-avatar-sm" style="background:#ffd4c4">🙋</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble other">能便宜点吗？40出不出？</div></div>
+    </div>
+    <div class="chat-msg-row mine">
+      <div class="chat-avatar-sm" style="background:#d4e4ff">👤</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble mine">行吧，40就40。什么时候来拿？</div></div>
+    </div>
+    <div class="chat-date-divider"><span class="chat-date-tag">今天 15:02</span></div>
+    <div class="chat-msg-row">
+      <div class="chat-avatar-sm" style="background:#ffd4c4">🙋</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble other">明天中午食堂门口？</div></div>
+    </div>
+    <div class="chat-msg-row mine">
+      <div class="chat-avatar-sm" style="background:#d4e4ff">👤</div>
+      <div class="chat-bubble-wrap"><div class="chat-bubble mine">没问题，明天见！👋</div></div>
+    </div>
+  </div>
+  <div class="chat-input-row">
+    <input class="chat-input" placeholder="输入消息..." id="chatInput">
+    <button class="btn-send" onclick="sendChat()">发送</button>
+  </div>
+</div>
+
+<!-- ================================= SEARCH ================================= -->
+<div id="page-search" class="page">
+  <div class="search-bar-row">
+    <input class="search-field" placeholder="搜索商品..." id="searchInput" autofocus>
+    <button class="search-cancel-btn" onclick="navTo('index')">取消</button>
+  </div>
+  <div class="history-block">
+    <div class="history-top">
+      <span class="ht">🕐 最近搜索</span>
+      <button class="hc" onclick="this.parentElement.nextElementSibling.innerHTML=''">清除</button>
+    </div>
+    <div class="history-list">
+      <div class="history-chip">高等数学</div>
+      <div class="history-chip">iPad</div>
+      <div class="history-chip">自行车</div>
+      <div class="history-chip">台灯</div>
+      <div class="history-chip">耳机</div>
+    </div>
+  </div>
+  <div class="empty-state">
+    <div class="empty-icon-wrap">🔍</div>
+    <div class="empty-desc">输入关键词开始搜索</div>
+  </div>
+</div>
+
+<!-- ================================= FAVORITES ================================= -->
+<div id="page-favorites" class="page">
+  <div class="nav-bar" style="background:#fff">
+    <div class="nav-back" onclick="navTo('user')">←</div>
+    我的收藏
+  </div>
+  <div class="page-content">
+    <div class="product-feed"><div class="waterfall" id="favList"></div></div>
+    <div class="empty-state" id="favEmpty">
+      <div class="empty-icon-wrap">⭐</div>
+      <div class="empty-title">还没有收藏</div>
+      <div class="empty-desc">去逛逛发现心仪的宝贝吧</div>
+      <button class="btn-submit" style="width:auto;padding:10px 30px;margin:0" onclick="navTo('index')">去逛逛</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================= MY PUBLISH ================================= -->
+<div id="page-mypublish" class="page">
+  <div class="nav-bar" style="background:#fff">
+    <div class="nav-back" onclick="navTo('user')">←</div>
+    我发布的
+  </div>
+  <div class="publish-tabs">
+    <div class="publish-tab active" onclick="switchMyTab(this,'selling')">在售</div>
+    <div class="publish-tab" onclick="switchMyTab(this,'sold')">已售</div>
+    <div class="publish-tab" onclick="switchMyTab(this,'all')">全部</div>
+  </div>
+  <div class="page-content">
+    <div class="product-feed"><div class="waterfall" id="myPubList"></div></div>
+    <div class="empty-state" id="myPubEmpty">
+      <div class="empty-icon-wrap">📦</div>
+      <div class="empty-title">还没有发布过</div>
+      <div class="empty-desc">把闲置物品分享给需要的同学</div>
+      <button class="btn-submit" style="width:auto;padding:10px 30px;margin:0" onclick="navTo('publish')">去发布</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================================= USER ================================= -->
+<div id="page-user" class="page">
+  <div class="nav-bar" style="background:transparent;color:#fff;position:absolute;z-index:2;left:0;right:0">我的</div>
+  <div class="page-content">
+    <div class="user-header-wrap">
+      <div style="height:46px"></div>
+      <div class="user-info-row">
+        <div class="user-avatar-big">👤</div>
+        <div>
+          <div class="user-name-big">小明同学</div>
+          <div class="user-sub">学号: 2024001 · 已通过校园认证 ✓</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="user-stats" style="margin-top:-16px;position:relative;z-index:2">
+      <div class="stat-item">
+        <div class="stat-num">12</div><div class="stat-label">在售宝贝</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">5</div><div class="stat-label">已售出</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-num">28</div><div class="stat-label">收藏</div>
+      </div>
+    </div>
+
+    <div class="menu-group">
+      <div class="menu-row" onclick="navTo('mypublish')">
+        <div class="menu-icon-wrap green">📦</div>
+        <span class="menu-label">我发布的</span>
+        <span class="menu-arrow">›</span>
+      </div>
+      <div class="menu-row" onclick="navTo('favorites')">
+        <div class="menu-icon-wrap orange">⭐</div>
+        <span class="menu-label">我的收藏</span>
+        <span class="menu-arrow">›</span>
+      </div>
+      <div class="menu-row" onclick="navTo('messages')">
+        <div class="menu-icon-wrap blue">💬</div>
+        <span class="menu-label">我的消息</span>
+        <span style="font-size:12px;color:#ff4d4f;margin-right:8px">3条未读</span>
+        <span class="menu-arrow">›</span>
+      </div>
+    </div>
+
+    <div class="menu-group">
+      <div class="menu-row">
+        <div class="menu-icon-wrap" style="background:#f5f5fa">ℹ️</div>
+        <span class="menu-label">关于我们</span>
+        <span class="menu-arrow">›</span>
+      </div>
+    </div>
+
+    <div style="text-align:center;padding:24px;color:#bbb;font-size:13px">校园跳蚤市场 v1.0.0</div>
+  </div>
+  <div class="tab-bar" id="tabBar5"></div>
+</div>
+
+</div><!-- /phone-frame -->
+
+<script>
+// === Data ===
+const allProducts = [
+  { id:'1', title:'高等数学 第七版 上下册', price:25, origPrice:58, views:156, cat:'textbook', catLabel:'教材', time:'3小时前', emoji:'📗', clr:'c3', badge:'new' },
+  { id:'2', title:'iPad Pro 2022 11寸 128G 几乎全新带壳', price:4200, origPrice:6199, views:892, cat:'digital', catLabel:'数码', time:'5小时前', emoji:'📱', clr:'c1', badge:'hot' },
+  { id:'3', title:'LED护眼台灯 可调光 宿舍学习必备', price:35, origPrice:89, views:78, cat:'living', catLabel:'生活', time:'1天前', emoji:'💡', clr:'c5', badge:'' },
+  { id:'4', title:'Nike Air Force 1 白色 42码', price:299, origPrice:799, views:234, cat:'clothing', catLabel:'服饰', time:'2天前', emoji:'👟', clr:'c2', badge:'' },
+  { id:'5', title:'瑜伽垫 加厚防滑 NBR材质 几乎全新', price:45, origPrice:99, views:56, cat:'sports', catLabel:'运动', time:'1天前', emoji:'🧘', clr:'c4', badge:'new' },
+  { id:'6', title:'桌面书架 木质置物架 宿舍收纳神器', price:20, origPrice:45, views:123, cat:'living', catLabel:'生活', time:'3天前', emoji:'🪵', clr:'c6', badge:'' },
+  { id:'7', title:'机械键盘 IKBC C87 樱桃红轴 9成新', price:180, origPrice:399, views:445, cat:'digital', catLabel:'数码', time:'4天前', emoji:'⌨️', clr:'c1', badge:'' },
+  { id:'8', title:'毛呢大衣 深灰色 M码 九成新 含羊毛', price:159, origPrice:459, views:67, cat:'clothing', catLabel:'服饰', time:'5天前', emoji:'🧥', clr:'c6', badge:'' },
+  { id:'9', title:'概率论与数理统计 浙大第四版', price:15, origPrice:38, views:89, cat:'textbook', catLabel:'教材', time:'2天前', emoji:'📘', clr:'c3', badge:'' },
+  { id:'10', title:'斯伯丁篮球 标准7号 送打气筒网兜', price:88, origPrice:199, views:112, cat:'sports', catLabel:'运动', time:'1天前', emoji:'🏀', clr:'c2', badge:'hot' },
+  { id:'11', title:'初学者吉他 卡马D1C 送调音器教材', price:350, origPrice:599, views:201, cat:'other', catLabel:'其他', time:'6天前', emoji:'🎸', clr:'c5', badge:'' },
+  { id:'12', title:'USB桌面加湿器 静音迷你 喷雾细腻', price:28, origPrice:59, views:45, cat:'living', catLabel:'生活', time:'12小时前', emoji:'💧', clr:'c1', badge:'new' },
+];
+
+let currentPage = 'index';
+let currentCat = '';
+let favIds = new Set(['2','7']);
+
+// === Navigation ===
+function navTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+  const el = document.getElementById('page-' + page);
+  if (el) el.classList.add('visible');
+
+  const hasTab = ['index','publish','messages','user'].includes(page);
+  document.querySelectorAll('.tab-bar').forEach(t => t.style.display = hasTab ? 'flex' : 'none');
+
+  currentPage = page;
+  if (['index','favorites','mypublish'].includes(page)) renderProducts();
+  if (page === 'index') updateStatusBar('#07c160');
+  else if (page === 'user') updateStatusBar('#07c160');
+  else updateStatusBar('#fff');
+}
+
+function updateStatusBar(bg) {
+  const bar = document.getElementById('statusBar');
+  bar.style.background = bg;
+  bar.style.color = bg === '#fff' ? '#333' : '#fff';
+}
+
+// === Categories ===
+function filterCat(el, cat) {
+  document.querySelectorAll('#catRow .cat-pill').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentCat = cat;
+  renderProducts();
+}
+
+// === Render Products ===
+function renderProducts() {
+  let items = allProducts;
+  if (currentCat) items = items.filter(p => p.cat === currentCat);
+
+  const renderGrid = (containerId, emptyId, data) => {
+    const container = document.getElementById(containerId);
+    const empty = document.getElementById(emptyId);
+    if (!container) return;
+    if (data.length === 0) {
+      container.innerHTML = '';
+      if (empty) empty.style.display = 'flex';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+
+    container.innerHTML = data.map(p => `
+      <div class="product-card" onclick="openDetail('${p.id}')">
+        <div class="product-img-wrap">
+          <div class="product-img-bg ${p.clr}">${p.emoji}</div>
+          ${p.badge === 'hot' ? '<div class="product-badge badge-hot">🔥 热门</div>' : ''}
+          ${p.badge === 'new' ? '<div class="product-badge badge-new">✨ 新品</div>' : ''}
+        </div>
+        <div class="product-info">
+          <div class="product-title">${p.title}</div>
+          <div class="product-price"><span class="yen">¥</span>${p.price}</div>
+          <div class="product-footer">
+            <span class="product-tag">${p.catLabel}</span>
+            <span class="product-meta"><span>👀 ${p.views}</span><span class="dot"></span><span>${p.time}</span></span>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  if (currentPage === 'index') renderGrid('productList', 'emptyState', items);
+  else if (currentPage === 'favorites') {
+    const favs = allProducts.filter(p => favIds.has(p.id));
+    renderGrid('favList', 'favEmpty', favs);
+  }
+  else if (currentPage === 'mypublish') renderGrid('myPubList', 'myPubEmpty', allProducts.filter((_,i) => i%3===0));
+}
+
+// === Detail ===
+function openDetail(id) {
+  const p = allProducts.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('detailPrice').textContent = '¥' + p.price;
+  document.getElementById('detailOrigPrice').textContent = p.origPrice ? '原价 ¥' + p.origPrice : '';
+  document.getElementById('detailTitle').textContent = p.title;
+  document.getElementById('detailTags').innerHTML = `
+    <span class="info-tag green">${p.catLabel}</span>
+    <span class="info-tag blue">轻微使用痕迹</span>
+  `;
+  document.getElementById('detailSeller').textContent = '小明同学';
+  document.getElementById('detailSchoolBadge').textContent = '已认证 · 2024级计算机系';
+  document.getElementById('detailDesc').innerHTML = '几乎全新，功能完好，无划痕磕碰。<br><br>因为毕业搬家所以出掉，诚心要可以小刀。<br><br>📍 当面交易，一手交钱一手交货<br>🕐 工作日中午/下午课后可约';
+  document.getElementById('detailEmoji').textContent = p.emoji;
+  document.getElementById('detailGallery').style.background = 'linear-gradient(135deg, #e8f4fd 0%, #dceaf8 50%, #f0f4ff 100%)';
+  updateFavUI(id);
+  navTo('detail');
+}
+
+function toggleFav() {
+  const title = document.getElementById('detailTitle').textContent;
+  const p = allProducts.find(x => x.title === title);
+  if (!p) return;
+  favIds.has(p.id) ? favIds.delete(p.id) : favIds.add(p.id);
+  updateFavUI(p.id);
+}
+
+function updateFavUI(id) {
+  const liked = favIds.has(id);
+  document.getElementById('favIcon').textContent = liked ? '❤️' : '🤍';
+  document.getElementById('favBtn').classList.toggle('liked', liked);
+}
+
+// === Publish ===
+function switchPub(type, el) {
+  el.parentElement.querySelectorAll('.publish-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('sellForm').classList.toggle('hidden', type !== 'sell');
+  document.getElementById('wantForm').classList.toggle('hidden', type === 'sell');
+}
+
+function switchMyTab(el, tab) {
+  el.parentElement.querySelectorAll('.publish-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderProducts();
+}
+
+// === Chat ===
+function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const area = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'chat-msg-row mine';
+  div.innerHTML = `<div class="chat-avatar-sm" style="background:#d4e4ff">👤</div><div class="chat-bubble-wrap"><div class="chat-bubble mine">${text}</div></div>`;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+  input.value = '';
+  setTimeout(() => {
+    const reply = document.createElement('div');
+    reply.className = 'chat-msg-row';
+    reply.innerHTML = `<div class="chat-avatar-sm" style="background:#ffd4c4">🙋</div><div class="chat-bubble-wrap"><div class="chat-bubble other">好的👌</div></div>`;
+    area.appendChild(reply);
+    area.scrollTop = area.scrollHeight;
+  }, 800);
+}
+
+// === Tab Bar Builder ===
+function buildTabBar(id, active) {
+  const tabs = [
+    { page:'index', icon:'🏠', label:'逛一逛' },
+    { page:'publish', icon:'', label:'', isCenter:true },
+    { page:'messages', icon:'💬', label:'消息' },
+    { page:'user', icon:'👤', label:'我的' },
+  ];
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = tabs.map((t,i) => {
+    if (t.isCenter) return `<div class="tab-publish-btn" onclick="navTo('publish')">＋</div>`;
+    return `<div class="tab-item ${t.page === active ? 'active' : ''}" onclick="navTo('${t.page}')">
+      <span class="tab-icon">${t.icon}</span><span>${t.label}</span></div>`;
+  }).join('');
+}
+buildTabBar('tabBar1', 'index');
+buildTabBar('tabBar3', 'publish');
+buildTabBar('tabBar4', 'messages');
+buildTabBar('tabBar5', 'user');
+
+// === Init ===
+updateStatusBar('#07c160');
+renderProducts();
+</script>
+</body>
+</html>

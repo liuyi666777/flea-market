@@ -1,0 +1,54 @@
+<view class="page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <view class="search-input-box">
+      <text class="search-icon">🔍</text>
+      <input
+        class="search-field"
+        placeholder="搜索商品..."
+        value="{{keyword}}"
+        bindinput="onInput"
+        bindconfirm="doSearch"
+        focus
+        confirm-type="search"
+      />
+      <text class="search-clear" wx:if="{{keyword}}" bindtap="clearSearch">✕</text>
+    </view>
+    <text class="search-cancel" bindtap="goBack">取消</text>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view class="result-list" wx:if="{{searched}}">
+    <view wx:if="{{list.length > 0}}">
+      <view class="result-header">找到 {{list.length}} 个相关商品</view>
+      <view class="product-grid">
+        <view class="product-col" wx:for="{{leftList}}" wx:key="_id">
+          <product-card product="{{item}}" bind:tap="goDetail" />
+        </view>
+        <view class="product-col" wx:for="{{rightList}}" wx:key="_id">
+          <product-card product="{{item}}" bind:tap="goDetail" />
+        </view>
+      </view>
+    </view>
+    <empty-state wx:else icon="🔍" text="没有找到相关商品，换一个关键词试试" />
+  </view>
+
+  <!-- 历史搜索 -->
+  <view class="history" wx:elif="{{history.length > 0}}">
+    <view class="flex-between px-20 py-20">
+      <text class="text-bold">最近搜索</text>
+      <text class="text-sm text-primary" bindtap="clearHistory">清除</text>
+    </view>
+    <view class="history-tags">
+      <view
+        class="history-tag"
+        wx:for="{{history}}"
+        wx:key="index"
+        bindtap="tapHistory"
+        data-keyword="{{item}}"
+      >
+        {{item}}
+      </view>
+    </view>
+  </view>
+</view>

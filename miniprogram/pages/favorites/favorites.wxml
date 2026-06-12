@@ -1,0 +1,13 @@
+<view class="page">
+  <view wx:if="{{list.length > 0}}">
+    <view class="product-grid">
+      <view class="product-col" wx:for="{{leftList}}" wx:key="_id">
+        <product-card product="{{item}}" bind:tap="goDetail" />
+      </view>
+      <view class="product-col" wx:for="{{rightList}}" wx:key="_id">
+        <product-card product="{{item}}" bind:tap="goDetail" />
+      </view>
+    </view>
+  </view>
+  <empty-state wx:else icon="⭐" text="还没有收藏，去逛逛吧" showBtn="{{true}}" btnText="去逛逛" bind:btntap="goIndex" />
+</view>

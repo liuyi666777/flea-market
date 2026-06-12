@@ -1,0 +1,121 @@
+page {
+  --primary: #07c160;
+  --primary-dark: #06ad56;
+  --danger: #ee0a24;
+  --warning: #ff976a;
+  --text: #333333;
+  --text-light: #666666;
+  --text-muted: #999999;
+  --bg: #f5f5f5;
+  --white: #ffffff;
+  --border: #ebedf0;
+  --shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif;
+  font-size: 28rpx;
+  color: var(--text);
+  background-color: var(--bg);
+  box-sizing: border-box;
+}
+
+/* 通用工具类 */
+.flex { display: flex; }
+.flex-1 { flex: 1; }
+.flex-col { flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-align-center { display: flex; align-items: center; }
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: var(--text-muted); }
+.text-light { color: var(--text-light); }
+.text-primary { color: var(--primary); }
+.text-danger { color: var(--danger); }
+.text-sm { font-size: 24rpx; }
+.text-lg { font-size: 32rpx; }
+.text-xl { font-size: 36rpx; }
+.text-bold { font-weight: 700; }
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ellipsis-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.mt-20 { margin-top: 20rpx; }
+.mb-20 { margin-bottom: 20rpx; }
+.ml-10 { margin-left: 10rpx; }
+.mr-10 { margin-right: 10rpx; }
+.p-20 { padding: 20rpx; }
+.px-20 { padding-left: 20rpx; padding-right: 20rpx; }
+.py-20 { padding-top: 20rpx; padding-bottom: 20rpx; }
+
+/* 卡片 */
+.card {
+  background: var(--white);
+  border-radius: 16rpx;
+  margin: 16rpx 20rpx;
+  padding: 20rpx;
+  box-shadow: var(--shadow);
+}
+
+/* 按钮 */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;
+  border-radius: 8rpx;
+  font-size: 30rpx;
+  border: none;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn-outline {
+  background: var(--white);
+  color: var(--primary);
+  border: 2rpx solid var(--primary);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn-sm {
+  height: 56rpx;
+  padding: 0 24rpx;
+  font-size: 24rpx;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.empty-state .icon {
+  font-size: 100rpx;
+  color: #ddd;
+  margin-bottom: 20rpx;
+}
+
+.empty-state .text {
+  font-size: 28rpx;
+  color: var(--text-muted);
+}

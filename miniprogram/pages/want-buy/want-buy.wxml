@@ -1,0 +1,42 @@
+<view class="page">
+  <!-- 分类 -->
+  <scroll-view class="category-scroll" scroll-x enable-flex>
+    <view
+      class="category-item {{activeCategory === item.key ? 'active' : ''}}"
+      wx:for="{{categories}}"
+      wx:key="key"
+      data-key="{{item.key}}"
+      bindtap="switchCategory"
+    >
+      <text>{{item.icon}} {{item.label}}</text>
+    </view>
+  </scroll-view>
+
+  <!-- 求购列表 -->
+  <view wx:if="{{list.length > 0}}">
+    <view class="want-card card" wx:for="{{list}}" wx:key="_id" bindtap="goDetail" data-id="{{item._id}}">
+      <view class="flex-between mb-15">
+        <view class="flex-align-center">
+          <image class="avatar-sm" src="{{item.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill" />
+          <text class="ml-10 text-light text-sm">{{item.nickName || '匿名用户'}}</text>
+        </view>
+        <text class="text-sm text-muted">{{item.timeAgo}}</text>
+      </view>
+      <view class="want-title text-lg text-bold">{{item.title}}</view>
+      <view class="want-desc text-light mt-10" wx:if="{{item.description}}">{{item.description}}</view>
+      <view class="flex-between mt-15">
+        <view class="want-budget text-primary text-bold">{{item.budgetText}}</view>
+        <view class="status-tag {{item.status === 'done' ? 'done' : ''}}">
+          {{item.status === 'done' ? '已找到' : '求购中'}}
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <empty-state wx:else icon="🔍" text="暂无求购信息" />
+
+  <!-- 发布求购按钮 -->
+  <view class="fab" bindtap="goCreate">
+    <text>+</text>
+  </view>
+</view>

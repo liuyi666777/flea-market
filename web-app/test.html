@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>测试</title></head>
+<body style="font-family:sans-serif;padding:20px">
+<h2>Supabase 连通测试</h2>
+<div id="status" style="padding:10px;background:#f0f0f0;border-radius:8px;margin:10px 0">加载 SDK...</div>
+<div id="result"></div>
+<script src="js/supabase.min.js"></script>
+<script src="js/supabase-config.js"></script>
+<script>
+var s = document.getElementById('status');
+s.textContent = 'SDK 加载完成，创建客户端...';
+try {
+  var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  s.textContent = '客户端创建成功，测试查询...';
+  client.from('products').select('count', { count: 'exact', head: true }).then(function(r) {
+    s.textContent = '✅ 连接成功！商品数: ' + (r.count || 0);
+    s.style.background = '#d4edda';
+  }).catch(function(e) {
+    s.textContent = '❌ 查询失败: ' + e.message;
+    s.style.background = '#f8d7da';
+  });
+} catch(e) {
+  s.textContent = '❌ 创建客户端失败: ' + e.message;
+  s.style.background = '#f8d7da';
+}
+</script>
+</body>
+</html>
