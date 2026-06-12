@@ -28,9 +28,19 @@
       "disablePlugins": [],
       "outputPath": ""
     },
-    "condition": false
+    "condition": false,
+    "compileWorklet": false,
+    "packNpmManually": false,
+    "packNpmRelationList": [],
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "useCompilerPlugins": false,
+    "swc": false,
+    "disableSWC": true
   },
-  "appid": "your-appid-here",
+  "appid": "wx3109c022e4fe6f37",
   "projectname": "flea-market",
   "libVersion": "3.3.4",
   "cloudfunctionTemplateRoot": "cloudfunctionTemplate/",
@@ -42,5 +52,8 @@
   "editorSetting": {
     "tabIndent": "insertSpaces",
     "tabSize": 2
-  }
+  },
+  "compileType": "miniprogram",
+  "simulatorPluginLibVersion": {},
+  "isGameTourist": false
 }
