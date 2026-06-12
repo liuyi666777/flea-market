@@ -62,6 +62,13 @@ window.addEventListener('DOMContentLoaded', function() {
         <option value="3">正常使用痕迹</option>
       </select>
     </div>
+    <div class="browse-section" id="browseSection" style="display:none">
+      <div class="browse-header">
+        <span class="browse-title">🕐 最近浏览</span>
+        <button class="browse-clear" onclick="App.clearBrowseHistory()">清除</button>
+      </div>
+      <div class="browse-scroll" id="browseScroll"></div>
+    </div>
     <div class="pub-tabs" id="homeTabs">
       <div class="pub-tab active" onclick="App.switchHomeTab('sell')">📦 卖闲置</div>
       <div class="pub-tab" onclick="App.switchHomeTab('want')">🔍 求购</div>
@@ -253,7 +260,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <script src="js/supabase.min.js?v=2"></script>
 <script src="js/supabase-config.js?v=2"></script>
-<script src="js/app-supabase.js?v=3"></script>
+<script src="js/app-supabase.js?v=4"></script>
 <script>
 // 先强制注销所有旧 Service Worker，然后注册新版本
 if ('serviceWorker' in navigator) {
