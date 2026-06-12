@@ -204,7 +204,7 @@ const App = {
   productCard(p,i) {
     const cat=CATEGORY_MAP[p.category]||{}, time=this.timeAgo(p.created_at), isSold=p.status==='sold';
     const img = p.images&&p.images.length>0
-      ? `<img src="${p.images[0]}" class="product-img-real" loading="lazy" onerror="this.style.display='none'"><div class="product-img-emoji" style="font-size:60px;display:none">${cat.emoji||'📦'}</div>`
+      ? `<img src="${p.images[0]}" class="product-img-real" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="product-img-emoji" style="font-size:60px;display:none">${cat.emoji||'📦'}</div>`
       : `<div class="product-img-emoji" style="font-size:60px">${cat.emoji||'📦'}</div>`;
     return `<div class="product-card fade-in" onclick="App.navTo('detail','${p.id}')" style="animation-delay:${(i%20)*0.03}s">
       <div class="product-img">${img}</div>
@@ -229,7 +229,7 @@ const App = {
     if(currentUser){const{count}=await sb.from('favorites').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id).eq('product_id',pid);isFav=count>0;}
     const isOwner=getMyId()===p.user_id, cat=CATEGORY_MAP[p.category]||{};
     let sn='匿名用户'; const{data:sp}=await sb.from('profiles').select('nickname').eq('id',p.user_id).maybeSingle(); if(sp)sn=sp.nickname||'用户';
-    const gb=p.images&&p.images.length>0?`<img src="${p.images[0]}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:100px">${cat.emoji||'📦'}</span>`;
+    const gb=p.images&&p.images.length>0?`<img src="${p.images[0]}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="font-size:100px;display:none">${cat.emoji||'📦'}</span>`:`<span style="font-size:100px">${cat.emoji||'📦'}</span>`;
     document.getElementById('detailContent').innerHTML=`
       <div class="gallery">${gb}<div class="gallery-dots"><div class="gallery-dot active"></div><div class="gallery-dot"></div><div class="gallery-dot"></div></div></div>
       <div class="detail-card"><div style="display:flex;align-items:flex-end;gap:10px"><span class="detail-price-main">¥${p.price}</span>${p.original_price?`<span class="detail-price-orig">原价 ¥${p.original_price}</span>`:''}</div>
@@ -274,13 +274,13 @@ const App = {
         <div style="font-size:11px;color:#999;margin-top:8px" id="uploadProgress"></div></div>
       <div class="form-block"><label class="form-label">商品标题</label><input class="form-input" id="pubTitle" placeholder="写一个吸引人的标题吧~"></div>
       <div class="form-block"><label class="form-label">商品描述</label><textarea class="form-textarea" id="pubDesc" placeholder="描述一下成色、使用情况等..."></textarea></div>
-      <div style="display:flex;gap:12px;margin:0 16px"><div class="form-block" style="flex:1;margin:0"><label class="form-label">售价 (元)</label><input class="form-input" id="pubPrice" type="number" placeholder="0.00"></div><div class="form-block" style="flex:1;margin:0"><label class="form-label">原价 (元)</label><input class="form-input" id="pubOrigPrice" type="number" placeholder="选填"></div></div>
+      <div style="display:flex;gap:12px;margin:0 16px"><div class="form-block" style="flex:1;margin:0"><label class="form-label">售价 (元)</label><input class="form-input" id="pubPrice" type="number" placeholder="0.00" min="0.01" max="9999" step="0.01"></div><div class="form-block" style="flex:1;margin:0"><label class="form-label">原价 (元)</label><input class="form-input" id="pubOrigPrice" type="number" placeholder="选填" min="0" max="9999" step="0.01"></div></div>
       <div class="form-block"><label class="form-label">分类</label><select class="form-select" id="pubCat">${Object.entries(CATEGORY_MAP).map(([k,v])=>`<option value="${k}">${v.emoji} ${v.label}</option>`).join('')}</select></div>
       <div class="form-block"><label class="form-label">成色</label><select class="form-select" id="pubCondition">${CONDITION_MAP.map((c,i)=>`<option value="${i}">${c}</option>`).join('')}</select></div>
       <button class="btn-submit" onclick="App.submitPublish()" id="pubSubmitBtn">✨ 立即发布</button>`
       :`<div class="form-block"><label class="form-label">求购物品</label><input class="form-input" id="wantTitle" placeholder="比如：二手自行车"></div>
       <div class="form-block"><label class="form-label">详细描述</label><textarea class="form-textarea" id="wantDesc" placeholder="说说你的具体需求..."></textarea></div>
-      <div class="form-block"><label class="form-label">预算 (元)</label><input class="form-input" id="wantBudget" type="number" placeholder="0.00"></div>
+      <div class="form-block"><label class="form-label">预算 (元)</label><input class="form-input" id="wantBudget" type="number" placeholder="0.00" min="0.01" max="9999" step="0.01"></div>
       <div class="form-block"><label class="form-label">分类</label><select class="form-select" id="wantCat">${Object.entries(CATEGORY_MAP).map(([k,v])=>`<option value="${k}">${v.emoji} ${v.label}</option>`).join('')}</select></div>
       <button class="btn-submit" onclick="App.submitWant()">✨ 发布求购</button>`;
   },
@@ -307,7 +307,7 @@ const App = {
   async submitPublish() {
     if(!currentUser){this.toast('请先登录');return;}
     const title=document.getElementById('pubTitle')?.value.trim(), price=parseFloat(document.getElementById('pubPrice')?.value);
-    if(!title)return this.toast('请输入商品标题'); if(!price||price<=0)return this.toast('请输入有效价格');
+    if(!title)return this.toast('请输入商品标题'); if(!price||price<0.01)return this.toast('价格最低0.01元'); if(price>9999)return this.toast('价格最高9999元');
     const btn=document.getElementById('pubSubmitBtn'); btn.disabled=true; btn.textContent='发布中...';
     const imageUrls=await this.uploadImages();
     const{error}=await sb.from('products').insert({user_id:currentUser.id,title,price,original_price:parseFloat(document.getElementById('pubOrigPrice')?.value)||null,category:document.getElementById('pubCat')?.value||'other',condition:parseInt(document.getElementById('pubCondition')?.value)||0,description:document.getElementById('pubDesc')?.value.trim()||'',images:imageUrls,status:'selling',view_count:0});
@@ -318,7 +318,7 @@ const App = {
   async submitWant() {
     if(!currentUser){this.toast('请先登录');return;}
     const title=document.getElementById('wantTitle')?.value.trim(),budget=parseFloat(document.getElementById('wantBudget')?.value);
-    if(!title)return this.toast('请输入求购物品'); if(!budget||budget<=0)return this.toast('请输入有效预算');
+    if(!title)return this.toast('请输入求购物品'); if(!budget||budget<0.01)return this.toast('预算最低0.01元'); if(budget>9999)return this.toast('预算最高9999元');
     const{error}=await sb.from('want_buys').insert({user_id:currentUser.id,title,budget,category:document.getElementById('wantCat')?.value||'other',description:document.getElementById('wantDesc')?.value.trim()||'',status:'active'});
     if(error){this.toast('发布失败: '+error.message);return;} this.toast('求购发布成功！'); setTimeout(()=>this.navTo('home'),800);
   },
@@ -395,6 +395,7 @@ const App = {
   async doRegister() {
     const email=document.getElementById('regEmail')?.value.trim(),pass=document.getElementById('regPass')?.value,nickname=document.getElementById('regNickname')?.value.trim(),schoolId=document.getElementById('regSchoolId')?.value.trim();
     if(!email||!pass)return this.toast('请输入邮箱和密码'); if(pass.length<6)return this.toast('密码至少6位'); if(!nickname)return this.toast('请输入昵称');
+    if(!this.validateNickname(nickname))return;
     const domain='@'+(email.split('@')[1]||'');
     if(domain.toLowerCase()!==SCHOOL_DOMAIN.toLowerCase())return this.toast('请使用学校邮箱注册 ('+SCHOOL_DOMAIN+')');
     const btn=document.getElementById('regBtn'); btn.disabled=true; btn.textContent='注册中...';
@@ -428,6 +429,15 @@ const App = {
   timeAgo(ts){const d=Date.now()-new Date(ts).getTime();if(d<6e4)return'刚刚';if(d<36e5)return Math.floor(d/6e4)+'分钟前';if(d<864e5)return Math.floor(d/36e5)+'小时前';if(d<6048e5)return Math.floor(d/864e5)+'天前';return this.formatTime(ts);},
   formatTime(ts){const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;},
   escapeHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;},
+  validateNickname(nickname){
+    const banned=['傻逼','操你','操你妈','妈的','他妈的','草泥马','cnm','fuck','shit','bitch','废物','垃圾货','白痴','弱智','脑残','去死','滚蛋','畜生','狗日的','贱人','骚货','婊子','妓女','约炮','裸聊','做爱','性交','色情','黄色','管理员','admin','官方','客服','系统','root','测试','test'];
+    const lower=nickname.toLowerCase();
+    for(const w of banned){ if(lower.includes(w.toLowerCase())){ this.toast('昵称包含敏感词，请修改'); return false; } }
+    if(nickname.length<2) { this.toast('昵称至少2个字符'); return false; }
+    if(nickname.length>12) { this.toast('昵称最多12个字符'); return false; }
+    if(!/^[一-龥a-zA-Z0-9_\-·]+$/.test(nickname)) { this.toast('昵称只能包含中文、英文、数字、下划线、连字符'); return false; }
+    return true;
+  },
   toast(m){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(this._tt);this._tt=setTimeout(()=>e.classList.remove('show'),1800);},
 
   _assistantOpen:false,
@@ -498,7 +508,7 @@ const App = {
     list.innerHTML=products.map(p=>{
       const cat=CATEGORY_MAP[p.category]||{};
       return`<div class="product-card" style="position:relative">
-        <div class="product-img" onclick="App.navTo('detail','${p.id}')">${p.images&&p.images.length>0?`<img src="${p.images[0]}" class="product-img-real" loading="lazy">`:`<div class="product-img-emoji" style="font-size:50px">${cat.emoji||'📦'}</div>`}</div>
+        <div class="product-img" onclick="App.navTo('detail','${p.id}')">${p.images&&p.images.length>0?`<img src="${p.images[0]}" class="product-img-real" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="product-img-emoji" style="font-size:50px;display:none">${cat.emoji||'📦'}</div>`:`<div class="product-img-emoji" style="font-size:50px">${cat.emoji||'📦'}</div>`}</div>
         <div class="product-body" onclick="App.navTo('detail','${p.id}')"><div class="product-title">${this.escapeHtml(p.title)}</div><div class="product-price"><span class="yen">¥</span>${p.price}</div><div class="product-footer"><span class="product-tag">${cat.label||''}</span><span class="product-meta">${p.status}</span></div></div>
         <button class="admin-del-fab" onclick="event.stopPropagation();App.adminDeleteProduct('${p.id}')" title="删除">🗑</button>
       </div>`;
