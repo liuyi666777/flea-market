@@ -66,7 +66,7 @@ sb.auth.onAuthStateChange((event, session) => {
 
 async function restoreSession() {
   const { data: { session } } = await sb.auth.getSession();
-  if (session?.user) { currentUser = session.user; await loadProfile(); subscribeMessages(); }
+  if (session?.user) { currentUser = session.user; await loadProfile(); subscribeMessages(); App.updateUserUI(); }
 }
 
 async function loadProfile() {
