@@ -103,6 +103,30 @@ CREATE INDEX idx_favorites_user ON favorites(user_id);
 CREATE INDEX idx_messages_users ON messages(from_user, to_user);
 CREATE INDEX idx_messages_created ON messages(created_at DESC);
 
+-- 6. 举报表
+CREATE TABLE reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  reporter_id UUID REFERENCES auth.users(id) NOT NULL,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
+  reason TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============ RLS 安全策略 ============
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+-- 登录用户可举报
+CREATE POLICY "reports_insert_auth" ON reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+-- 管理员可读所有举报（简化处理：本人可读自己的举报）
+CREATE POLICY "reports_read_own" ON reports FOR SELECT USING (auth.uid() = reporter_id);
+
+-- ============ Storage 存储桶 ============
+-- 在 Supabase Dashboard → Storage 中手动创建 product-images 存储桶
+-- 或者执行：
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('product-images', 'product-images', true);
+-- CREATE POLICY "storage_read_public" ON storage.objects FOR SELECT USING (bucket_id = 'product-images');
+-- CREATE POLICY "storage_insert_auth" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'product-images' AND auth.uid() = owner);
+
 -- ============ 自动创建用户资料 ============
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$

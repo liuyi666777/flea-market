@@ -1,5 +1,5 @@
-// Service Worker - 校园跳蚤市场
-const CACHE_NAME = 'flea-market-v3';
+// Service Worker - 科院市场
+const CACHE_NAME = 'flea-market-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
