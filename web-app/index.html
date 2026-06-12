@@ -48,7 +48,22 @@ window.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
     <div class="cat-scroll" id="catScroll"></div>
+    <div class="filter-bar">
+      <select class="filter-select" onchange="App.setSort(this.value)">
+        <option value="created_at">🕐 最新发布</option>
+        <option value="price_asc">💰 价格从低到高</option>
+        <option value="price_desc">💎 价格从高到低</option>
+      </select>
+      <select class="filter-select" onchange="App.setCondition(parseInt(this.value))">
+        <option value="-1">🏷️ 全部成色</option>
+        <option value="0">全新</option>
+        <option value="1">几乎全新</option>
+        <option value="2">轻微使用痕迹</option>
+        <option value="3">正常使用痕迹</option>
+      </select>
+    </div>
     <div class="main-content">
+      <div class="pull-indicator" id="pullIndicator"></div>
       <div class="feed">
         <div class="feed-header"><span class="feed-title">💎 最新发布</span></div>
         <div class="waterfall" id="homeList"></div>
@@ -178,7 +193,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <div style="text-align:center;color:#999;font-size:13px;margin-top:10px">还没有账号？<span style="color:#07c160;cursor:pointer" onclick="App.showAuth('register')">去注册</span></div>
       </div>
       <div id="authFormRegister" style="display:none">
-        <div class="form-block"><label class="form-label">邮箱</label><input class="form-input" id="regEmail" type="email" placeholder="输入邮箱"></div>
+        <div class="form-block"><label class="form-label">邮箱（须为学校邮箱 @sxast.edu.cn）</label><input class="form-input" id="regEmail" type="email" placeholder="xxx@sxast.edu.cn"></div>
         <div class="form-block"><label class="form-label">密码（至少6位）</label><input class="form-input" id="regPass" type="password" placeholder="设置密码"></div>
         <div class="form-block"><label class="form-label">昵称</label><input class="form-input" id="regNickname" placeholder="你的昵称"></div>
         <div class="form-block"><label class="form-label">学号（选填）</label><input class="form-input" id="regSchoolId" placeholder="学号，用于认证身份"></div>
@@ -232,7 +247,8 @@ if ('serviceWorker' in navigator) {
   }).finally(function() {
     // 延迟注册新 SW，确保旧的全部清除
     setTimeout(function() {
-      navigator.serviceWorker.register('/flea-market/sw.js?v=3').catch(function(){});
+      var swPath = (location.pathname.includes('/flea-market/') ? '/flea-market/sw.js' : '/sw.js') + '?v=4';
+	      navigator.serviceWorker.register(swPath).catch(function(){});
     }, 500);
   });
 }
