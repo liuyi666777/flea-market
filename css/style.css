@@ -1127,3 +1127,74 @@ html, body {
   align-items: center;
   justify-content: center;
 }
+
+/* ===== Admin Panel ===== */
+.admin-card {
+  background: #fff;
+  margin: 10px 16px;
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+.admin-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.admin-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-pending { background: #fff3ee; color: #ff6b35; }
+.badge-resolved { background: #e8f8ef; color: #048b42; }
+.admin-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #f0f0f5;
+  color: #888;
+}
+.admin-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.admin-btn-sm {
+  padding: 8px 18px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 500;
+}
+.admin-btn-sm:active { background: var(--primary-light); }
+.admin-btn-sm.danger {
+  border-color: var(--red);
+  color: var(--red);
+}
+.admin-btn-sm.danger:active { background: #fff0f0; }
+.admin-del-fab {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: rgba(255,77,79,0.9);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(255,77,79,0.3);
+  z-index: 5;
+}
+.admin-del-fab:active { transform: scale(0.9); }
+.menu-icon-wrap.red { background: #fff0f0; }

@@ -112,6 +112,7 @@ const App = {
     this.currentPage = page;
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     const el = document.getElementById('page-'+page); if(el)el.classList.add('active');
+    if (page==='admin' && !(currentProfile&&currentProfile.is_admin)) { this.toast('无管理员权限'); return; }
     const hasTab = ['home','publish','messages','user'].includes(page);
     document.querySelectorAll('.tab-bar').forEach(t=>t.style.display=hasTab?'flex':'none');
     if (page==='home') { this.currentCat=''; this._page=0; this._hasMore=true; this.renderCategories(); this.renderHome(); }
@@ -123,8 +124,9 @@ const App = {
     if (page==='mypublish') this.renderMyPublish();
     if (page==='user') this.updateUserUI();
     if (page==='search') this.renderSearchHistory();
+    if (page==='admin') this.renderAdmin();
   },
-  navBack() { const m={detail:'home',chat:'messages',search:'home',favorites:'user',mypublish:'user'}; this.navTo(m[this.currentPage]||'home'); },
+  navBack() { const m={detail:'home',chat:'messages',search:'home',favorites:'user',mypublish:'user',admin:'user'}; this.navTo(m[this.currentPage]||'home'); },
 
   renderCategories() {
     const cats=[{key:'',label:'全部',emoji:'🔥'}];
@@ -414,9 +416,10 @@ const App = {
       document.getElementById('userName').textContent=currentProfile.nickname||'用户';
       document.getElementById('userSubInfo').textContent=currentProfile.school_id?'学号: '+currentProfile.school_id:currentUser.email;
       document.getElementById('userAvatar').textContent='👤';document.getElementById('logoutSection').style.display='block';document.getElementById('userActionArea').innerHTML='';
+      document.getElementById('adminMenuRow').style.display=currentProfile.is_admin?'flex':'none';
       try{const{count:sc}=await sb.from('products').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id).eq('status','selling');const{count:soc}=await sb.from('products').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id).eq('status','sold');const{count:fc}=await sb.from('favorites').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id);document.getElementById('statSell').textContent=sc||0;document.getElementById('statSold').textContent=soc||0;document.getElementById('statFav').textContent=fc||0;}catch(e){console.warn('统计失败:',e.message);}
     }else{
-      document.getElementById('userName').textContent='未登录';document.getElementById('userSubInfo').textContent='注册/登录后使用完整功能';document.getElementById('userAvatar').textContent='👤';document.getElementById('logoutSection').style.display='none';document.getElementById('statSell').textContent='0';document.getElementById('statSold').textContent='0';document.getElementById('statFav').textContent='0';document.getElementById('userActionArea').innerHTML=`<button class="btn-primary" style="width:auto;padding:10px 40px;margin:0" onclick="App.showAuth('login')">📧 邮箱登录 / 注册</button>`;
+      document.getElementById('userName').textContent='未登录';document.getElementById('userSubInfo').textContent='注册/登录后使用完整功能';document.getElementById('userAvatar').textContent='👤';document.getElementById('logoutSection').style.display='none';document.getElementById('statSell').textContent='0';document.getElementById('statSold').textContent='0';document.getElementById('statFav').textContent='0';document.getElementById('adminMenuRow').style.display='none';document.getElementById('userActionArea').innerHTML=`<button class="btn-primary" style="width:auto;padding:10px 40px;margin:0" onclick="App.showAuth('login')">📧 邮箱登录 / 注册</button>`;
     }
   },
 
@@ -431,6 +434,82 @@ const App = {
   toggleAssistant(){this._assistantOpen=!this._assistantOpen;const p=document.getElementById('assistantPanel');if(p)p.classList.toggle('open',this._assistantOpen);},
   assistantReply(q){const b=document.getElementById('assistantBody'),um=document.createElement('div');um.className='assistant-msg user';um.textContent=q;b.appendChild(um);const bm=document.createElement('div');bm.className='assistant-msg bot';const a={'如何发布商品？':'点击底部中间的 <b>＋</b> 进入发布页，填写信息后发布即可。现在支持上传真实图片啦~','怎么联系卖家？':'在商品详情页点击 <b>"💬 我想要"</b> 即可和卖家实时聊天，消息即时推送！','如何注册账号？':'点击 <b>"我的"</b> → <b>"邮箱登录/注册"</b>，使用学校邮箱（@sxast.edu.cn）注册，填写学号完成认证。','交易安全吗？':'建议：<br>1️⃣ <b>校内当面交易</b><br>2️⃣ 仔细检查成色<br>3️⃣ 贵重物品保留凭证<br>4️⃣ 遇到问题使用<b>"举报"</b>功能','发布有什么规则？':'📋 规则：<br>• 禁止虚假信息<br>• 禁止违禁品/食品/药品<br>• 如实描述成色<br>• 已售及时标记','学校地址在哪？':'📍 山西应用科技学院<br>太原市小店区北格镇<br>建议在图书馆/食堂等公共区域交易~'};bm.innerHTML=a[q]||('收到你的问题："'+q+'"<br>点击下方快捷按钮或联系管理员获取帮助~');b.appendChild(bm);b.scrollTop=b.scrollHeight;},
   sendAssistant(){const i=document.getElementById('assistantInput'),t=i.value.trim();if(!t)return;i.value='';this.assistantReply(t);},
+
+  _adminTab:'reports',
+  switchAdminTab(tab){this._adminTab=tab;document.querySelectorAll('#page-admin .pub-tab').forEach((t,i)=>{t.classList.toggle('active',(i===0&&tab==='reports')||(i===1&&tab==='products'));});this.renderAdmin();},
+  async renderAdmin(){
+    if(this._adminTab==='reports') await this.renderAdminReports();
+    else await this.renderAdminProducts();
+  },
+  async renderAdminReports(){
+    const container=document.getElementById('adminContent');
+    const{data:reports,error}=await sb.from('reports').select('*').order('created_at',{ascending:false});
+    if(error){container.innerHTML=`<div class="empty"><div class="empty-icon">🚩</div><div class="empty-desc">加载失败: ${error.message}</div></div>`;return;}
+    if(!reports||reports.length===0){container.innerHTML=`<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">暂无举报</div><div class="empty-desc">社区很和谐~</div></div>`;return;}
+    const pids=[...new Set(reports.map(r=>r.product_id))];
+    const{data:products}=await sb.from('products').select('id,title,status,user_id').in('id',pids);
+    const pm={};if(products)products.forEach(p=>{pm[p.id]=p;});
+    const uids=[...new Set([...reports.map(r=>r.reporter_id),...Object.values(pm).map(p=>p.user_id)])];
+    const{data:profiles}=await sb.from('profiles').select('id,nickname').in('id',uids);
+    const um={};if(profiles)profiles.forEach(p=>{um[p.id]=p;});
+    container.innerHTML=reports.map(r=>{const p=pm[r.product_id]||{};return`
+      <div class="admin-card fade-in">
+        <div class="admin-card-header">
+          <span class="admin-badge ${r.status==='pending'?'badge-pending':'badge-resolved'}">${r.status==='pending'?'待处理':'已处理'}</span>
+          <span style="font-size:12px;color:#999">${this.timeAgo(r.created_at)}</span>
+        </div>
+        <div style="font-size:14px;margin:6px 0"><b>举报原因：</b>${this.escapeHtml(r.reason)}</div>
+        <div style="font-size:13px;color:#666">商品：${this.escapeHtml(p.title||'已删除')} <span class="admin-tag">${p.status||'未知'}</span></div>
+        <div style="font-size:12px;color:#999;margin-top:2px">举报人：${(um[r.reporter_id]||{}).nickname||'用户'} | 卖家：${(um[p.user_id]||{}).nickname||'用户'}</div>
+        <div class="admin-actions">
+          ${p.id?`<button class="admin-btn-sm danger" onclick="App.adminDeleteProduct('${p.id}')">🗑 删除商品</button>`:''}
+          ${r.status==='pending'?`<button class="admin-btn-sm" onclick="App.resolveReport('${r.id}')">✓ 标记已处理</button>`:''}
+        </div>
+      </div>`;}).join('');
+  },
+  async resolveReport(id){
+    const{error}=await sb.from('reports').update({status:'resolved'}).eq('id',id);
+    if(error){this.toast('操作失败: '+error.message);return;}
+    this.toast('已标记为已处理');this.renderAdminReports();
+  },
+  async adminDeleteProduct(id){
+    if(!confirm('确定要删除这个商品吗？此操作不可撤销。'))return;
+    const{error}=await sb.from('products').delete().eq('id',id);
+    if(error){this.toast('删除失败: '+error.message);return;}
+    this.toast('商品已删除');this.renderAdminReports();
+  },
+  async renderAdminProducts(){
+    const container=document.getElementById('adminContent');
+    container.innerHTML=`
+      <div class="search-header">
+        <input class="search-field" placeholder="搜索所有商品..." id="adminSearchInput" oninput="App.adminSearchProducts(this.value)">
+      </div>
+      <div class="feed" style="padding-top:12px"><div class="waterfall" id="adminProductList"></div></div>
+      <div class="empty" id="adminProdEmpty" style="display:none"><div class="empty-icon">📦</div><div class="empty-desc">未找到商品</div></div>`;
+    const{data:products}=await sb.from('products').select('*').order('created_at',{ascending:false}).limit(50);
+    this._adminProducts=products||[];
+    this.renderAdminProductCards(this._adminProducts);
+  },
+  renderAdminProductCards(products){
+    const list=document.getElementById('adminProductList'),empty=document.getElementById('adminProdEmpty');
+    if(!list)return;
+    if(!products||products.length===0){list.innerHTML='';if(empty)empty.style.display='flex';return;}
+    if(empty)empty.style.display='none';
+    list.innerHTML=products.map(p=>{
+      const cat=CATEGORY_MAP[p.category]||{};
+      return`<div class="product-card" style="position:relative">
+        <div class="product-img" onclick="App.navTo('detail','${p.id}')">${p.images&&p.images.length>0?`<img src="${p.images[0]}" class="product-img-real" loading="lazy">`:`<div class="product-img-emoji" style="font-size:50px">${cat.emoji||'📦'}</div>`}</div>
+        <div class="product-body" onclick="App.navTo('detail','${p.id}')"><div class="product-title">${this.escapeHtml(p.title)}</div><div class="product-price"><span class="yen">¥</span>${p.price}</div><div class="product-footer"><span class="product-tag">${cat.label||''}</span><span class="product-meta">${p.status}</span></div></div>
+        <button class="admin-del-fab" onclick="event.stopPropagation();App.adminDeleteProduct('${p.id}')" title="删除">🗑</button>
+      </div>`;
+    }).join('');
+  },
+  adminSearchProducts(kw){
+    if(!this._adminProducts)return;
+    if(!kw||kw.trim().length===0){this.renderAdminProductCards(this._adminProducts);return;}
+    const q=kw.toLowerCase();
+    this.renderAdminProductCards(this._adminProducts.filter(p=>p.title.toLowerCase().includes(q)));
+  },
 };
 
 document.addEventListener('DOMContentLoaded',()=>App.init());
