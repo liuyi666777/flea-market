@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07c160">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="科院市场">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<title>山西应用科技学院校园市场</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="debugBar" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#333;color:#0f0;font-size:11px;padding:2px 8px;font-family:monospace;max-width:480px;margin:0 auto">⏳ HTML 加载成功</div>
+<script>
+document.getElementById('debugBar').textContent = '⏳ 开始加载脚本...';
+window.onerror = function(m, src, line, col, err) {
+  var d = document.getElementById('debugBar');
+  if (d) d.innerHTML = '❌ JS错误: ' + m + '<br><small>' + src + ':' + line + ':' + col + '</small>';
+  return false;
+};
+window.addEventListener('unhandledrejection', function(e) {
+  var d = document.getElementById('debugBar');
+  if (d) d.innerHTML = '❌ 异步错误: ' + (e.reason ? e.reason.message : '') + '<br><small>stack: ' + (e.reason && e.reason.stack ? e.reason.stack.split('\n').slice(0,2).join('<br>') : '') + '</small>';
+});
+// 检查 supabase SDK 是否加载
+window.addEventListener('DOMContentLoaded', function() {
+  if (typeof window.supabase === 'undefined') {
+    var d = document.getElementById('debugBar');
+    if (d) d.innerHTML = '❌ supabase.min.js 未加载！请检查文件是否存在';
+  }
+});
+</script>
+<div id="app">
+  <div class="status-bar" id="statusBar"><span>9:41</span><span>●●●●○ 📶 🔋</span></div>
+
+  <!-- ===== HOME ===== -->
+  <div id="page-home" class="page active">
+    <div class="hero">
+      <div style="height:28px"></div>
+      <div class="hero-title">山西应用科技学院校园市场</div>
+      <div class="hero-subtitle">淘好物 · 卖闲置 · 认识同学</div>
+      <div class="search-box" onclick="App.navTo('search')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <span>搜索你想要的宝贝...</span>
+      </div>
+    </div>
+    <div class="cat-scroll" id="catScroll"></div>
+    <div class="main-content">
+      <div class="feed">
+        <div class="feed-header"><span class="feed-title">💎 最新发布</span></div>
+        <div class="waterfall" id="homeList"></div>
+      </div>
+      <div class="empty" id="homeEmpty" style="display:none">
+        <div class="empty-icon">🛒</div>
+        <div class="empty-title">暂无商品</div>
+        <div class="empty-desc">还没有人发布商品，来做第一个吧</div>
+      </div>
+    </div>
+    <div class="tab-bar" id="tabHome"></div>
+  </div>
+
+  <!-- ===== DETAIL ===== -->
+  <div id="page-detail" class="page">
+    <div class="nav-bar"><div class="nav-back" onclick="App.navBack()">←</div>商品详情</div>
+    <div class="main-content" id="detailContent"></div>
+    <div class="detail-bottom-bar" id="detailBottom"></div>
+  </div>
+
+  <!-- ===== PUBLISH ===== -->
+  <div id="page-publish" class="page">
+    <div class="nav-bar">发布</div>
+    <div class="pub-tabs">
+      <div class="pub-tab active" onclick="App.switchPubTab('sell')">📦 卖闲置</div>
+      <div class="pub-tab" onclick="App.switchPubTab('want')">🔍 发求购</div>
+    </div>
+    <div class="main-content" id="publishContent"></div>
+    <div class="tab-bar" id="tabPublish"></div>
+  </div>
+
+  <!-- ===== MESSAGES ===== -->
+  <div id="page-messages" class="page">
+    <div class="nav-bar">消息</div>
+    <div class="main-content" id="messagesContent"></div>
+    <div class="tab-bar" id="tabMessages"></div>
+  </div>
+
+  <!-- ===== CHAT ===== -->
+  <div id="page-chat" class="page">
+    <div class="nav-bar"><div class="nav-back" onclick="App.navTo('messages')">←</div><span id="chatTitle">聊天</span></div>
+    <div class="chat-area" id="chatArea"></div>
+    <div class="chat-input-bar">
+      <input class="chat-input" placeholder="输入消息..." id="chatInputField">
+      <button class="btn-send" onclick="App.sendChat()">发送</button>
+    </div>
+  </div>
+
+  <!-- ===== SEARCH ===== -->
+  <div id="page-search" class="page">
+    <div class="search-header">
+      <input class="search-field" placeholder="搜索商品..." id="searchInput">
+      <button class="search-cancel" onclick="App.navBack()">取消</button>
+    </div>
+    <div class="main-content">
+      <div class="history-block">
+        <div class="history-top"><span class="ht">🕐 最近搜索</span><button class="hc" onclick="App.clearHistory()">清除</button></div>
+        <div class="history-tags" id="historyTags"></div>
+      </div>
+      <div class="waterfall" id="searchResults" style="padding:0 16px"></div>
+    </div>
+  </div>
+
+  <!-- ===== FAVORITES ===== -->
+  <div id="page-favorites" class="page">
+    <div class="nav-bar"><div class="nav-back" onclick="App.navTo('user')">←</div>我的收藏</div>
+    <div class="main-content"><div class="feed"><div class="waterfall" id="favList"></div></div>
+      <div class="empty" id="favEmpty"><div class="empty-icon">⭐</div><div class="empty-title">还没有收藏</div><div class="empty-desc">去逛逛发现心仪的宝贝吧</div></div>
+    </div>
+  </div>
+
+  <!-- ===== MY PUBLISH ===== -->
+  <div id="page-mypublish" class="page">
+    <div class="nav-bar"><div class="nav-back" onclick="App.navTo('user')">←</div>我发布的</div>
+    <div class="pub-tabs">
+      <div class="pub-tab active" onclick="App.switchMyTab('selling')">在售</div>
+      <div class="pub-tab" onclick="App.switchMyTab('sold')">已售</div>
+      <div class="pub-tab" onclick="App.switchMyTab('all')">全部</div>
+    </div>
+    <div class="main-content">
+      <div class="feed"><div class="waterfall" id="myPubList"></div></div>
+      <div class="empty" id="myPubEmpty"><div class="empty-icon">📦</div><div class="empty-title">还没有发布过</div><div class="empty-desc">把闲置分享给需要的同学</div></div>
+    </div>
+  </div>
+
+  <!-- ===== USER ===== -->
+  <div id="page-user" class="page">
+    <div class="main-content">
+      <div class="user-header-wrap">
+        <div style="height:28px"></div>
+        <div class="user-info-row">
+          <div class="user-avatar-big" id="userAvatar">👤</div>
+          <div>
+            <div class="user-name-big" id="userName">未登录</div>
+            <div class="user-sub" id="userSubInfo">注册/登录后使用完整功能</div>
+          </div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num" id="statSell">0</div><div class="stat-label">在售宝贝</div></div>
+        <div class="stat-divider"></div>
+        <div class="stat-item"><div class="stat-num" id="statSold">0</div><div class="stat-label">已售出</div></div>
+        <div class="stat-divider"></div>
+        <div class="stat-item"><div class="stat-num" id="statFav">0</div><div class="stat-label">收藏</div></div>
+      </div>
+      <div class="menu-group">
+        <div class="menu-row" onclick="App.navTo('mypublish')"><div class="menu-icon-wrap green">📦</div><span class="menu-label">我发布的</span><span class="menu-arrow">›</span></div>
+        <div class="menu-row" onclick="App.navTo('favorites')"><div class="menu-icon-wrap orange">⭐</div><span class="menu-label">我的收藏</span><span class="menu-arrow">›</span></div>
+        <div class="menu-row" onclick="App.navTo('messages')"><div class="menu-icon-wrap blue">💬</div><span class="menu-label">我的消息</span><span class="menu-arrow">›</span></div>
+      </div>
+      <div id="userActionArea" style="text-align:center;padding:20px">
+        <button class="btn-primary" style="width:auto;padding:10px 40px;margin:0" onclick="App.showAuth('login')">📧 邮箱登录 / 注册</button>
+      </div>
+      <div id="logoutSection" style="text-align:center;padding:10px;cursor:pointer;color:#bbb;font-size:13px;display:none" onclick="App.logout()">退出登录</div>
+    </div>
+    <div class="tab-bar" id="tabUser"></div>
+  </div>
+
+  <!-- ===== AUTH PAGE ===== -->
+  <div id="page-auth" class="page">
+    <div class="nav-bar"><div class="nav-back" onclick="App.closeAuth()">←</div><span id="authTitle">登录</span></div>
+    <div class="main-content" style="padding:20px">
+      <div id="authFormLogin">
+        <div class="form-block"><label class="form-label">邮箱</label><input class="form-input" id="loginEmail" type="email" placeholder="输入邮箱"></div>
+        <div class="form-block"><label class="form-label">密码</label><input class="form-input" id="loginPass" type="password" placeholder="输入密码"></div>
+        <button class="btn-submit" onclick="App.doLogin()">登录</button>
+        <div style="text-align:center;color:#999;font-size:13px;margin-top:10px">还没有账号？<span style="color:#07c160;cursor:pointer" onclick="App.showAuth('register')">去注册</span></div>
+      </div>
+      <div id="authFormRegister" style="display:none">
+        <div class="form-block"><label class="form-label">邮箱</label><input class="form-input" id="regEmail" type="email" placeholder="输入邮箱"></div>
+        <div class="form-block"><label class="form-label">密码（至少6位）</label><input class="form-input" id="regPass" type="password" placeholder="设置密码"></div>
+        <div class="form-block"><label class="form-label">昵称</label><input class="form-input" id="regNickname" placeholder="你的昵称"></div>
+        <div class="form-block"><label class="form-label">学号（选填）</label><input class="form-input" id="regSchoolId" placeholder="学号，用于认证身份"></div>
+        <button class="btn-submit" onclick="App.doRegister()" id="regBtn">注册</button>
+        <div style="text-align:center;color:#999;font-size:13px;margin-top:10px">已有账号？<span style="color:#07c160;cursor:pointer" onclick="App.showAuth('login')">去登录</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<!-- 浮动小助手 -->
+<div class="assistant-fab" id="assistantFab" onclick="App.toggleAssistant()">
+  <span class="assistant-fab-icon">🤖</span>
+</div>
+<div class="assistant-panel" id="assistantPanel">
+  <div class="assistant-header">
+    <span class="assistant-header-icon">🤖</span>
+    <div>
+      <div class="assistant-header-title">科院小助手</div>
+      <div class="assistant-header-sub">有问题随时问我~</div>
+    </div>
+    <div class="assistant-close" onclick="App.toggleAssistant()">✕</div>
+  </div>
+  <div class="assistant-body" id="assistantBody">
+    <div class="assistant-msg bot">你好！我是科院校园市场的小助手 👋<br>有什么可以帮你的吗？</div>
+  </div>
+  <div class="assistant-quick">
+    <button onclick="App.assistantReply('如何发布商品？')">📦 如何发布商品？</button>
+    <button onclick="App.assistantReply('怎么联系卖家？')">💬 怎么联系卖家？</button>
+    <button onclick="App.assistantReply('如何注册账号？')">📧 如何注册账号？</button>
+    <button onclick="App.assistantReply('交易安全吗？')">🔒 交易安全吗？</button>
+    <button onclick="App.assistantReply('发布有什么规则？')">📋 发布有什么规则？</button>
+    <button onclick="App.assistantReply('学校地址在哪？')">📍 学校地址在哪？</button>
+  </div>
+  <div class="assistant-input-row">
+    <input class="assistant-input" id="assistantInput" placeholder="输入你的问题..." onkeydown="if(event.key==='Enter')App.sendAssistant()">
+    <button class="assistant-send" onclick="App.sendAssistant()">发送</button>
+  </div>
+</div>
+
+<script src="js/supabase.min.js?v=2"></script>
+<script src="js/supabase-config.js?v=2"></script>
+<script src="js/app-supabase.js?v=2"></script>
+<script>
+// 先强制注销所有旧 Service Worker，然后注册新版本
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    registrations.forEach(function(reg) { reg.unregister(); });
+  }).finally(function() {
+    // 延迟注册新 SW，确保旧的全部清除
+    setTimeout(function() {
+      navigator.serviceWorker.register('/flea-market/sw.js?v=3').catch(function(){});
+    }, 500);
+  });
+}
+</script>
+</body>
+</html>
