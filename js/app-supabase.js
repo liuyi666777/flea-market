@@ -47,11 +47,57 @@ const AVATAR_COLORS = [
 const PAGE_SIZE = 20;
 const STORAGE_BUCKET = 'product-images';
 const SCHOOL_DOMAIN = '@sxast.edu.cn';
+const BANNED_WORDS = ['傻逼','操你','操你妈','妈的','他妈的','草泥马','cnm','fuck','shit','bitch','废物','垃圾货','白痴','弱智','脑残','去死','滚蛋','畜生','狗日的','贱人','骚货','婊子','妓女','约炮','裸聊','做爱','性交','色情','黄色','管理员','admin','官方','客服','系统','root'];
 
 const LocalStore = {
   get(key, def) { try { const v = localStorage.getItem('fm_'+key); return v ? JSON.parse(v) : def; } catch { return def; } },
   set(key, val) { try { localStorage.setItem('fm_'+key, JSON.stringify(val)); } catch {} },
 };
+
+function hasSensitiveWord(text) {
+  const lower = text.toLowerCase();
+  for (const w of BANNED_WORDS) { if (lower.includes(w.toLowerCase())) return w; }
+  return null;
+}
+
+// ==================== IMAGE COMPRESSION ====================
+function compressImage(file, maxSize) {
+  maxSize = maxSize || 500;
+  return new Promise(function(resolve) {
+    if (file.size < maxSize * 1024) { resolve(file); return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var w = img.width, h = img.height;
+        var maxDim = 1200;
+        if (w > maxDim || h > maxDim) {
+          if (w > h) { h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var quality = 0.8;
+        var tryCompress = function() {
+          canvas.toBlob(function(blob) {
+            if (blob.size < maxSize * 1024 || quality <= 0.2) {
+              var compressed = new File([blob], file.name, { type: 'image/jpeg' });
+              resolve(compressed);
+            } else {
+              quality -= 0.1;
+              tryCompress();
+            }
+          }, 'image/jpeg', quality);
+        };
+        tryCompress();
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 // ==================== AUTH STATE ====================
 let currentUser = null;
@@ -86,6 +132,9 @@ function subscribeMessages() {
       if (App.currentPage === 'messages') App.renderMessages();
       if (App.currentPage === 'chat' && App.currentChatUser) App.renderChatMessages();
     })
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'messages', filter:`from_user=eq.${currentUser.id}` }, () => {
+      if (App.currentPage === 'chat' && App.currentChatUser) App.renderChatMessages();
+    })
     .subscribe();
 }
 
@@ -94,6 +143,7 @@ const App = {
   currentPage: 'home', currentCat: '', currentDetailId: null, currentChatUser: null,
   _page:0, _hasMore:true, _loading:false, _sortBy:'created_at', _sortDir:'desc', _filterCond:-1,
   pubType:'sell', pubImages:[], myPubTab:'selling',
+  _editingProduct:null, _homeTab:'sell', _detailImgIdx:0,
 
   async init() {
     dbg('④ 渲染页面...');
@@ -113,11 +163,13 @@ const App = {
     document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
     const el = document.getElementById('page-'+page); if(el)el.classList.add('active');
     if (page==='admin' && !(currentProfile&&currentProfile.is_admin)) { this.toast('无管理员权限'); return; }
+    if (page==='edit' && !currentUser) { this.toast('请先登录'); this.navTo('user'); return; }
     const hasTab = ['home','publish','messages','user'].includes(page);
     document.querySelectorAll('.tab-bar').forEach(t=>t.style.display=hasTab?'flex':'none');
     if (page==='home') { this.currentCat=''; this._page=0; this._hasMore=true; this.renderCategories(); this.renderHome(); }
     if (page==='detail'&&data) this.renderDetail(data);
     if (page==='publish') this.renderPublish();
+    if (page==='edit'&&data) this.renderEdit(data);
     if (page==='messages') this.renderMessages();
     if (page==='chat'&&data) this.openChat(data);
     if (page==='favorites') this.renderFavorites();
@@ -126,7 +178,17 @@ const App = {
     if (page==='search') this.renderSearchHistory();
     if (page==='admin') this.renderAdmin();
   },
-  navBack() { const m={detail:'home',chat:'messages',search:'home',favorites:'user',mypublish:'user',admin:'user'}; this.navTo(m[this.currentPage]||'home'); },
+  navBack() { const m={detail:'home',chat:'messages',search:'home',favorites:'user',mypublish:'user',admin:'user',edit:'detail'}; this.navTo(m[this.currentPage]||'home'); },
+
+  // ==================== HOME ====================
+  switchHomeTab(tab) { this._homeTab=tab; this._page=0; this._hasMore=true; this.renderHomeTabs(); document.getElementById('homeList').innerHTML=''; this.renderHome(); },
+  renderHomeTabs() {
+    var tabs = document.getElementById('homeTabs');
+    if (!tabs) return;
+    tabs.querySelectorAll('.pub-tab').forEach(function(t, i) {
+      t.classList.toggle('active', (i===0 && App._homeTab==='sell') || (i===1 && App._homeTab==='want'));
+    });
+  },
 
   renderCategories() {
     const cats=[{key:'',label:'全部',emoji:'🔥'}];
@@ -153,31 +215,54 @@ const App = {
   async renderHome() {
     const container = document.getElementById('homeList'), empty = document.getElementById('homeEmpty');
     if (this._page===0) this.showSkeleton();
-    let q = sb.from('products').select('*',{count:'exact'}).eq('status','selling');
-    if (this.currentCat) q = q.eq('category', this.currentCat);
-    if (this._filterCond >= 0) q = q.eq('condition', this._filterCond);
-    q = q.order(this._sortBy, {ascending: this._sortDir==='asc'}).range(0, (this._page+1)*PAGE_SIZE-1);
-    const {data:products, count, error}=await q;
-    if (error) { console.warn('查询失败:',error.message); return; }
-    this._hasMore = products && products.length < (count||0);
-    this._loading = false;
-    if ((!products||products.length===0) && this._page===0) { container.innerHTML=''; empty.style.display='flex'; return; }
-    empty.style.display='none';
-    container.innerHTML = products.map((p,i)=>this.productCard(p,i)).join('');
+    if (this._homeTab==='sell') {
+      let q = sb.from('products').select('*',{count:'exact'}).eq('status','selling');
+      if (this.currentCat) q = q.eq('category', this.currentCat);
+      if (this._filterCond >= 0) q = q.eq('condition', this._filterCond);
+      q = q.order(this._sortBy, {ascending: this._sortDir==='asc'}).range(0, (this._page+1)*PAGE_SIZE-1);
+      const {data:products, count, error}=await q;
+      if (error) { console.warn('查询失败:',error.message); return; }
+      this._hasMore = products && products.length < (count||0);
+      this._loading = false;
+      if ((!products||products.length===0) && this._page===0) { container.innerHTML=''; empty.style.display='flex'; return; }
+      empty.style.display='none';
+      container.innerHTML = products.map((p,i)=>this.productCard(p,i)).join('');
+    } else {
+      let q = sb.from('want_buys').select('*',{count:'exact'}).eq('status','active');
+      if (this.currentCat) q = q.eq('category', this.currentCat);
+      q = q.order('created_at',{ascending:false}).range(0, (this._page+1)*PAGE_SIZE-1);
+      const {data:items, count, error}=await q;
+      if (error) { console.warn('查询失败:',error.message); return; }
+      this._hasMore = items && items.length < (count||0);
+      this._loading = false;
+      if ((!items||items.length===0) && this._page===0) { container.innerHTML=''; empty.style.display='flex'; return; }
+      empty.style.display='none';
+      container.innerHTML = items.map((w,i)=>this.wantCard(w,i)).join('');
+    }
   },
 
   async loadMore() {
     if (this._loading||!this._hasMore||this.currentPage!=='home') return;
     this._loading=true; this._page++;
-    let q = sb.from('products').select('*').eq('status','selling');
-    if (this.currentCat) q=q.eq('category',this.currentCat);
-    if (this._filterCond>=0) q=q.eq('condition',this._filterCond);
-    q=q.order(this._sortBy,{ascending:this._sortDir==='asc'}).range(this._page*PAGE_SIZE,(this._page+1)*PAGE_SIZE-1);
-    const {data:products}=await q;
-    if (!products||products.length===0) { this._hasMore=false; this._loading=false; return; }
-    this._hasMore = products.length===PAGE_SIZE; this._loading=false;
-    const idx=this._page*PAGE_SIZE;
-    document.getElementById('homeList').insertAdjacentHTML('beforeend', products.map((p,i)=>this.productCard(p,idx+i)).join(''));
+    if (this._homeTab==='sell') {
+      let q = sb.from('products').select('*').eq('status','selling');
+      if (this.currentCat) q=q.eq('category',this.currentCat);
+      if (this._filterCond>=0) q=q.eq('condition',this._filterCond);
+      q=q.order(this._sortBy,{ascending:this._sortDir==='asc'}).range(this._page*PAGE_SIZE,(this._page+1)*PAGE_SIZE-1);
+      const {data:products}=await q;
+      if (!products||products.length===0) { this._hasMore=false; this._loading=false; return; }
+      this._hasMore = products.length===PAGE_SIZE; this._loading=false;
+      const idx=this._page*PAGE_SIZE;
+      document.getElementById('homeList').insertAdjacentHTML('beforeend', products.map((p,i)=>this.productCard(p,idx+i)).join(''));
+    } else {
+      let q = sb.from('want_buys').select('*').eq('status','active');
+      if (this.currentCat) q=q.eq('category',this.currentCat);
+      q=q.order('created_at',{ascending:false}).range(this._page*PAGE_SIZE,(this._page+1)*PAGE_SIZE-1);
+      const {data:items}=await q;
+      if (!items||items.length===0) { this._hasMore=false; this._loading=false; return; }
+      this._hasMore = items.length===PAGE_SIZE; this._loading=false;
+      document.getElementById('homeList').insertAdjacentHTML('beforeend', items.map((w,i)=>this.wantCard(w,i)).join(''));
+    }
   },
 
   setupInfiniteScroll() {
@@ -214,13 +299,20 @@ const App = {
       <div class="product-footer"><span class="product-tag">${cat.label||''}</span><span class="product-meta">👀 ${p.view_count||0} · ${time}</span></div></div></div>`;
   },
 
-  gradientForCat(cat) {
-    const g={textbook:'linear-gradient(135deg,#e8f8ef,#d0f0df)',digital:'linear-gradient(135deg,#e8f4fd,#dceaf8)',living:'linear-gradient(135deg,#fef3e2,#fde8c8)',clothing:'linear-gradient(135deg,#fce4ec,#f8d0da)',sports:'linear-gradient(135deg,#f5f0ff,#e8dff8)',other:'linear-gradient(135deg,#fdf2e8,#fce4d4)'};
-    return g[cat]||g.other;
+  wantCard(w,i) {
+    const cat=CATEGORY_MAP[w.category]||{};
+    return `<div class="product-card fade-in" style="animation-delay:${(i%20)*0.03}s;border-left:3px solid #ff6b35">
+      <div class="product-img" style="background:linear-gradient(135deg,#fff3ee,#ffe8e0);display:flex;align-items:center;justify-content:center;font-size:50px">🔍</div>
+      <div class="product-body">
+        <div class="product-title">${this.escapeHtml(w.title)}</div>
+        <div class="product-price" style="color:#ff6b35"><span class="yen">¥</span>${w.budget||'面议'}</div>
+        <div class="product-footer"><span class="product-tag" style="background:#fff3ee;color:#ff6b35">求购</span><span class="product-meta">${cat.label||''} · ${this.timeAgo(w.created_at)}</span></div>
+      </div></div>`;
   },
 
+  // ==================== DETAIL ====================
   async renderDetail(pid) {
-    this.currentDetailId=pid;
+    this.currentDetailId=pid; this._detailImgIdx=0;
     const {data:p}=await sb.from('products').select('*').eq('id',pid).maybeSingle();
     if(!p){this.toast('商品不存在');return;}
     await sb.from('products').update({view_count:(p.view_count||0)+1}).eq('id',pid);
@@ -229,12 +321,31 @@ const App = {
     if(currentUser){const{count}=await sb.from('favorites').select('*',{count:'exact',head:true}).eq('user_id',currentUser.id).eq('product_id',pid);isFav=count>0;}
     const isOwner=getMyId()===p.user_id, cat=CATEGORY_MAP[p.category]||{};
     let sn='匿名用户'; const{data:sp}=await sb.from('profiles').select('nickname').eq('id',p.user_id).maybeSingle(); if(sp)sn=sp.nickname||'用户';
-    const gb=p.images&&p.images.length>0?`<img src="${p.images[0]}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><span style="font-size:100px;display:none">${cat.emoji||'📦'}</span>`:`<span style="font-size:100px">${cat.emoji||'📦'}</span>`;
-    document.getElementById('detailContent').innerHTML=`
-      <div class="gallery">${gb}<div class="gallery-dots"><div class="gallery-dot active"></div><div class="gallery-dot"></div><div class="gallery-dot"></div></div></div>
-      <div class="detail-card"><div style="display:flex;align-items:flex-end;gap:10px"><span class="detail-price-main">¥${p.price}</span>${p.original_price?`<span class="detail-price-orig">原价 ¥${p.original_price}</span>`:''}</div>
+
+    var galleryHTML = '';
+    var images = p.images && p.images.length > 0 ? p.images : null;
+    if (images) {
+      var dotsHTML = images.map(function(_, i) {
+        return '<div class="gallery-dot' + (i===0?' active':'') + '"></div>';
+      }).join('');
+      galleryHTML = '<div class="gallery-wrap" id="galleryWrap">' +
+        '<div class="gallery-slider" id="gallerySlider" style="width:' + (images.length*100) + '%">' +
+        images.map(function(src) {
+          return '<div class="gallery-slide"><img src="' + src + '" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><span style="font-size:100px;display:none">' + (cat.emoji||'📦') + '</span></div>';
+        }).join('') +
+        '</div>' +
+        '<div class="gallery-dots">' + dotsHTML + '</div>' +
+        (images.length > 1 ? '<div class="gallery-arrow left" onclick="App.slideGallery(-1)">‹</div><div class="gallery-arrow right" onclick="App.slideGallery(1)">›</div>' : '') +
+        '</div>';
+    } else {
+      galleryHTML = '<div class="gallery"><span style="font-size:100px">' + (cat.emoji||'📦') + '</span></div>';
+    }
+
+    document.getElementById('detailContent').innerHTML=
+      galleryHTML +
+      `<div class="detail-card"><div style="display:flex;align-items:flex-end;gap:10px"><span class="detail-price-main">¥${p.price}</span>${p.original_price?`<span class="detail-price-orig">原价 ¥${p.original_price}</span>`:''}</div>
       <div class="detail-title-text">${this.escapeHtml(p.title)}</div><div class="detail-tag-row"><span class="detail-tag green">${cat.label}</span><span class="detail-tag blue">${CONDITION_MAP[p.condition]||'正常'}</span><span style="font-size:12px;color:#999;margin-left:auto">👀 ${p.view_count}次浏览 · ${this.timeAgo(p.created_at)}</span></div></div>
-      <div class="seller-card"><div class="seller-left"><div class="seller-avatar">👤</div><div><div class="seller-name">${this.escapeHtml(sn)}</div><div class="seller-badge">已认证</div></div></div>${!isOwner?`<button class="btn-sm-outline" onclick="App.navTo('chat','${p.user_id}')">联系卖家</button>`:''}</div>
+      <div class="seller-card"><div class="seller-left"><div class="seller-avatar">👤</div><div><div class="seller-name">${this.escapeHtml(sn)}</div><div class="seller-badge">已认证</div></div></div>${!isOwner?`<button class="btn-sm-outline" onclick="App.navTo('chat','${p.user_id}')">联系卖家</button>`:`<button class="btn-sm-outline" onclick="App.navTo('edit','${p.id}')">✏️ 编辑</button>`}</div>
       <div class="detail-desc-card"><div class="detail-desc-title">📝 商品描述</div><div class="detail-desc-text">${this.escapeHtml(p.description||'卖家很懒，什么都没写~').replace(/\n/g,'<br>')}</div></div>
       ${!isOwner?`<div style="text-align:right;padding:0 16px 8px"><span style="font-size:11px;color:#ccc;cursor:pointer" onclick="App.reportProduct('${p.id}')">🚩 举报</span></div>`:''}`;
     document.getElementById('detailBottom').innerHTML=currentUser?(isOwner?`
@@ -243,6 +354,37 @@ const App = {
       :`<button class="btn-fav ${isFav?'liked':''}" onclick="App.toggleFav()"><span>${isFav?'❤️':'🤍'}</span><span class="lbl">收藏</span></button>
       <button class="btn-primary" onclick="App.navTo('chat','${p.user_id}')">💬 我想要</button>`)
       :`<button class="btn-primary" style="width:100%" onclick="App.showAuth('login')">登录后联系卖家</button>`;
+    this._detailImages = images;
+    this._detailImgIdx = 0;
+    this.setupGallerySwipe();
+  },
+
+  slideGallery(dir) {
+    if (!this._detailImages) return;
+    var newIdx = this._detailImgIdx + dir;
+    if (newIdx < 0 || newIdx >= this._detailImages.length) return;
+    this._detailImgIdx = newIdx;
+    this.updateGalleryPosition();
+  },
+
+  updateGalleryPosition() {
+    var slider = document.getElementById('gallerySlider');
+    var dots = document.querySelectorAll('#galleryWrap .gallery-dot');
+    if (slider) slider.style.transform = 'translateX(-' + (this._detailImgIdx * 100 / (this._detailImages?this._detailImages.length:1)) + '%)';
+    if (dots) dots.forEach(function(d, i) { d.classList.toggle('active', i === App._detailImgIdx); });
+  },
+
+  setupGallerySwipe() {
+    var wrap = document.getElementById('galleryWrap');
+    if (!wrap || !this._detailImages || this._detailImages.length < 2) return;
+    var sx = 0, swiping = false;
+    wrap.addEventListener('touchstart', function(e) { sx = e.touches[0].clientX; swiping = true; }, {passive:true});
+    wrap.addEventListener('touchmove', function(e) { if (!swiping) return; }, {passive:true});
+    wrap.addEventListener('touchend', function(e) {
+      if (!swiping) return; swiping = false;
+      var dx = e.changedTouches[0].clientX - sx;
+      if (Math.abs(dx) > 50) App.slideGallery(dx < 0 ? 1 : -1);
+    });
   },
 
   async toggleFav() {
@@ -264,26 +406,37 @@ const App = {
     if(error){this.toast('举报失败: '+error.message);return;} this.toast('举报已提交，我们会尽快处理');
   },
 
+  // ==================== PUBLISH ====================
   renderPublish() {
+    this._editingProduct = null;
     if(!currentUser){document.getElementById('publishContent').innerHTML=`<div class="empty"><div class="empty-icon">📦</div><div class="empty-desc">请先登录后再发布</div><button class="btn-primary" style="width:auto;padding:8px 30px;margin:0" onclick="App.showAuth('login')">去登录</button></div>`;return;}
-    const isSell=this.pubType==='sell';
-    document.getElementById('publishContent').innerHTML=isSell?`
+    this.pubImages=[];
+    document.getElementById('publishContent').innerHTML = this.pubFormHTML('', '', '', '', '', 'other', 0);
+    document.getElementById('pubTitle').value=''; document.getElementById('pubDesc').value='';
+    document.getElementById('pubPrice').value=''; document.getElementById('pubOrigPrice').value='';
+  },
+
+  pubFormHTML(title, desc, price, origPrice, cat, condition, btnText) {
+    btnText = btnText || '✨ 立即发布';
+    var isSell = this.pubType === 'sell';
+    return isSell ? `
       <div class="form-block"><label class="form-label">商品图片</label><div class="upload-row" id="uploadRow">
         ${this.pubImages.map((f,i)=>`<div class="upload-preview" style="background-image:url(${typeof f==='string'?f:URL.createObjectURL(f)})"><div class="upload-remove" onclick="App.removeImage(${i})">×</div></div>`).join('')}
         <div class="upload-box" onclick="App.pickImage()"><span style="font-size:32px">+</span><span style="font-size:11px;margin-top:4px">添加图片</span></div></div>
         <div style="font-size:11px;color:#999;margin-top:8px" id="uploadProgress"></div></div>
-      <div class="form-block"><label class="form-label">商品标题</label><input class="form-input" id="pubTitle" placeholder="写一个吸引人的标题吧~"></div>
-      <div class="form-block"><label class="form-label">商品描述</label><textarea class="form-textarea" id="pubDesc" placeholder="描述一下成色、使用情况等..."></textarea></div>
-      <div style="display:flex;gap:12px;margin:0 16px"><div class="form-block" style="flex:1;margin:0"><label class="form-label">售价 (元)</label><input class="form-input" id="pubPrice" type="number" placeholder="0.00" min="0.01" max="9999" step="0.01"></div><div class="form-block" style="flex:1;margin:0"><label class="form-label">原价 (元)</label><input class="form-input" id="pubOrigPrice" type="number" placeholder="选填" min="0" max="9999" step="0.01"></div></div>
-      <div class="form-block"><label class="form-label">分类</label><select class="form-select" id="pubCat">${Object.entries(CATEGORY_MAP).map(([k,v])=>`<option value="${k}">${v.emoji} ${v.label}</option>`).join('')}</select></div>
-      <div class="form-block"><label class="form-label">成色</label><select class="form-select" id="pubCondition">${CONDITION_MAP.map((c,i)=>`<option value="${i}">${c}</option>`).join('')}</select></div>
-      <button class="btn-submit" onclick="App.submitPublish()" id="pubSubmitBtn">✨ 立即发布</button>`
-      :`<div class="form-block"><label class="form-label">求购物品</label><input class="form-input" id="wantTitle" placeholder="比如：二手自行车"></div>
-      <div class="form-block"><label class="form-label">详细描述</label><textarea class="form-textarea" id="wantDesc" placeholder="说说你的具体需求..."></textarea></div>
-      <div class="form-block"><label class="form-label">预算 (元)</label><input class="form-input" id="wantBudget" type="number" placeholder="0.00" min="0.01" max="9999" step="0.01"></div>
-      <div class="form-block"><label class="form-label">分类</label><select class="form-select" id="wantCat">${Object.entries(CATEGORY_MAP).map(([k,v])=>`<option value="${k}">${v.emoji} ${v.label}</option>`).join('')}</select></div>
+      <div class="form-block"><label class="form-label">商品标题</label><input class="form-input" id="pubTitle" placeholder="写一个吸引人的标题吧~" value="${this.escapeAttr(title)}"></div>
+      <div class="form-block"><label class="form-label">商品描述</label><textarea class="form-textarea" id="pubDesc" placeholder="描述一下成色、使用情况等...">${this.escapeHtml(desc)}</textarea></div>
+      <div style="display:flex;gap:12px;margin:0 16px"><div class="form-block" style="flex:1;margin:0"><label class="form-label">售价 (元)</label><input class="form-input" id="pubPrice" type="number" placeholder="0.00" min="0.01" max="9999" step="0.01" value="${price}"></div><div class="form-block" style="flex:1;margin:0"><label class="form-label">原价 (元)</label><input class="form-input" id="pubOrigPrice" type="number" placeholder="选填" min="0" max="9999" step="0.01" value="${origPrice}"></div></div>
+      <div class="form-block"><label class="form-label">分类</label><select class="form-select" id="pubCat">${Object.entries(CATEGORY_MAP).map(([k,v])=>`<option value="${k}" ${k===cat?'selected':''}>${v.emoji} ${v.label}</option>`).join('')}</select></div>
+      <div class="form-block"><label class="form-label">成色</label><select class="form-select" id="pubCondition">${CONDITION_MAP.map((c,i)=>`<option value="${i}" ${i===condition?'selected':''}>${c}</option>`).join('')}</select></div>
+      <button class="btn-submit" onclick="App.submitPublish()" id="pubSubmitBtn">${btnText}</button>`
+    : `<div class="form-block"><label class="form-label">求购物品</label><input class="form-input" id="wantTitle" placeholder="比如：二手自行车" value="${this.escapeAttr(title)}"></div>
+      <div class="form-block"><label class="form-label">详细描述</label><textarea class="form-textarea" id="wantDesc" placeholder="说说你的具体需求...">${this.escapeHtml(desc)}</textarea></div>
+      <div class="form-block"><label class="form-label">预算 (元)</label><input class="form-input" id="wantBudget" type="number" placeholder="0.00" min="0.01" max="9999" step="0.01" value="${price}"></div>
+      <div class="form-block"><label class="form-label">分类</label><select class="form-select" id="wantCat">${Object.entries(CATEGORY_MAP).map(([k,v])=>`<option value="${k}" ${k===cat?'selected':''}>${v.emoji} ${v.label}</option>`).join('')}</select></div>
       <button class="btn-submit" onclick="App.submitWant()">✨ 发布求购</button>`;
   },
+
   switchPubTab(type){this.pubType=type;document.querySelectorAll('#page-publish .pub-tab').forEach((t,i)=>{t.classList.toggle('active',(i===0&&type==='sell')||(i===1&&type==='want'));});this.renderPublish();},
   pickImage(){const i=document.createElement('input');i.type='file';i.accept='image/*';i.multiple=true;i.onchange=e=>{Array.from(e.target.files).forEach(f=>{this.pubImages.push(f);});this.renderPublish();};i.click();},
   removeImage(i){this.pubImages.splice(i,1);this.renderPublish();},
@@ -293,9 +446,10 @@ const App = {
     const urls=[],pe=document.getElementById('uploadProgress');
     for(let i=0;i<this.pubImages.length;i++){
       const f=this.pubImages[i]; if(typeof f==='string'){urls.push(f);continue;}
-      const fp=`${getMyId()}/${Date.now()}_${f.name||'image.jpg'}`;
-      if(pe)pe.textContent=`上传中 ${i+1}/${this.pubImages.length}...`;
-      const{error}=await sb.storage.from(STORAGE_BUCKET).upload(fp,f,{upsert:false});
+      if(pe)pe.textContent=`压缩上传中 ${i+1}/${this.pubImages.length}...`;
+      const compressed = await compressImage(f);
+      const fp=`${getMyId()}/${Date.now()}_${compressed.name||'image.jpg'}`;
+      const{error}=await sb.storage.from(STORAGE_BUCKET).upload(fp,compressed,{upsert:false});
       if(error){console.warn('图片上传失败:',error.message);continue;}
       const{data:ud}=sb.storage.from(STORAGE_BUCKET).getPublicUrl(fp);
       if(ud?.publicUrl)urls.push(ud.publicUrl);
@@ -307,22 +461,77 @@ const App = {
   async submitPublish() {
     if(!currentUser){this.toast('请先登录');return;}
     const title=document.getElementById('pubTitle')?.value.trim(), price=parseFloat(document.getElementById('pubPrice')?.value);
-    if(!title)return this.toast('请输入商品标题'); if(!price||price<0.01)return this.toast('价格最低0.01元'); if(price>9999)return this.toast('价格最高9999元');
+    if(!title)return this.toast('请输入商品标题');
+    const bannedInTitle = hasSensitiveWord(title);
+    if(bannedInTitle){this.toast(`标题包含敏感词"${bannedInTitle}"，请修改`);return;}
+    const desc = document.getElementById('pubDesc')?.value.trim()||'';
+    const bannedInDesc = hasSensitiveWord(desc);
+    if(bannedInDesc){this.toast(`描述包含敏感词"${bannedInDesc}"，请修改`);return;}
+    if(!price||price<0.01)return this.toast('价格最低0.01元'); if(price>9999)return this.toast('价格最高9999元');
     const btn=document.getElementById('pubSubmitBtn'); btn.disabled=true; btn.textContent='发布中...';
     const imageUrls=await this.uploadImages();
-    const{error}=await sb.from('products').insert({user_id:currentUser.id,title,price,original_price:parseFloat(document.getElementById('pubOrigPrice')?.value)||null,category:document.getElementById('pubCat')?.value||'other',condition:parseInt(document.getElementById('pubCondition')?.value)||0,description:document.getElementById('pubDesc')?.value.trim()||'',images:imageUrls,status:'selling',view_count:0});
-    btn.disabled=false; btn.textContent='✨ 立即发布';
-    if(error){this.toast('发布失败: '+error.message);return;} this.pubImages=[]; this.toast('发布成功！'); setTimeout(()=>this.navTo('home'),800);
+    const data={
+      title, price,
+      original_price: parseFloat(document.getElementById('pubOrigPrice')?.value)||null,
+      category: document.getElementById('pubCat')?.value||'other',
+      condition: parseInt(document.getElementById('pubCondition')?.value)||0,
+      description: desc
+    };
+    if (imageUrls.length > 0) data.images = imageUrls;
+    var error;
+    if (this._editingProduct) {
+      var{error:err}=await sb.from('products').update(data).eq('id', this._editingProduct.id).eq('user_id', currentUser.id);
+      error = err;
+    } else {
+      data.user_id = currentUser.id;
+      data.status = 'selling';
+      data.view_count = 0;
+      var{error:err}=await sb.from('products').insert(data);
+      error = err;
+    }
+    btn.disabled=false; btn.textContent=this._editingProduct?'💾 保存修改':'✨ 立即发布';
+    if(error){this.toast((this._editingProduct?'保存':'发布')+'失败: '+error.message);return;}
+    this.pubImages=[]; this._editingProduct=null;
+    this.toast(this._editingProduct?'保存成功！':'发布成功！');
+    setTimeout(()=>this.navTo('home'),800);
   },
 
   async submitWant() {
     if(!currentUser){this.toast('请先登录');return;}
     const title=document.getElementById('wantTitle')?.value.trim(),budget=parseFloat(document.getElementById('wantBudget')?.value);
-    if(!title)return this.toast('请输入求购物品'); if(!budget||budget<0.01)return this.toast('预算最低0.01元'); if(budget>9999)return this.toast('预算最高9999元');
-    const{error}=await sb.from('want_buys').insert({user_id:currentUser.id,title,budget,category:document.getElementById('wantCat')?.value||'other',description:document.getElementById('wantDesc')?.value.trim()||'',status:'active'});
+    if(!title)return this.toast('请输入求购物品');
+    const bannedInTitle = hasSensitiveWord(title);
+    if(bannedInTitle){this.toast(`标题包含敏感词"${bannedInTitle}"，请修改`);return;}
+    const desc = document.getElementById('wantDesc')?.value.trim()||'';
+    const bannedInDesc = hasSensitiveWord(desc);
+    if(bannedInDesc){this.toast(`描述包含敏感词"${bannedInDesc}"，请修改`);return;}
+    if(!budget||budget<0.01)return this.toast('预算最低0.01元'); if(budget>9999)return this.toast('预算最高9999元');
+    const{error}=await sb.from('want_buys').insert({user_id:currentUser.id,title,budget,category:document.getElementById('wantCat')?.value||'other',description:desc,status:'active'});
     if(error){this.toast('发布失败: '+error.message);return;} this.toast('求购发布成功！'); setTimeout(()=>this.navTo('home'),800);
   },
 
+  // ==================== EDIT ====================
+  async renderEdit(pid) {
+    if(!currentUser){this.toast('请先登录');return;}
+    const{data:p}=await sb.from('products').select('*').eq('id',pid).maybeSingle();
+    if(!p){this.toast('商品不存在');return;}
+    if(p.user_id !== currentUser.id){this.toast('只能编辑自己的商品');return;}
+    this._editingProduct = p;
+    this.pubImages = (p.images||[]).map(function(u){return u;});
+    this.pubType = 'sell';
+    this.currentPage = 'edit';
+    document.querySelectorAll('.page').forEach(function(pg){pg.classList.remove('active');});
+    var el = document.getElementById('page-publish');
+    if (el) el.classList.add('active');
+    document.querySelectorAll('.tab-bar').forEach(function(t){t.style.display='none';});
+    document.querySelectorAll('#page-publish .pub-tab').forEach(function(t,i){t.classList.toggle('active', i===0);});
+    document.getElementById('publishContent').innerHTML = this.pubFormHTML(
+      p.title, p.description||'', String(p.price||''), String(p.original_price||''),
+      p.category, p.condition||0, '💾 保存修改'
+    );
+  },
+
+  // ==================== MESSAGES ====================
   async renderMessages() {
     if(!currentUser){document.getElementById('messagesContent').innerHTML=`<div class="empty"><div class="empty-icon">💬</div><div class="empty-desc">登录后可查看消息</div><button class="btn-primary" style="width:auto;padding:8px 30px;margin:0" onclick="App.showAuth('login')">去登录</button></div>`;return;}
     const{data:messages}=await sb.from('messages').select('*').or(`from_user.eq.${currentUser.id},to_user.eq.${currentUser.id}`).order('created_at',{ascending:false});
@@ -339,7 +548,8 @@ const App = {
     const{data:p}=await sb.from('profiles').select('nickname').eq('id',pid).maybeSingle();
     document.getElementById('chatTitle').textContent=p?.nickname||'用户';
     await sb.from('messages').update({is_read:true}).eq('from_user',pid).eq('to_user',currentUser.id).eq('is_read',false);
-    this.renderChatMessages(); setTimeout(()=>{const a=document.getElementById('chatArea');if(a)a.scrollTop=a.scrollHeight;},100);
+    this.renderChatMessages();
+    setTimeout(()=>{const a=document.getElementById('chatArea');if(a)a.scrollTop=a.scrollHeight;},100);
   },
 
   async renderChatMessages() {
@@ -347,22 +557,37 @@ const App = {
     const{data:messages}=await sb.from('messages').select('*').or(`and(from_user.eq.${currentUser.id},to_user.eq.${this.currentChatUser}),and(from_user.eq.${this.currentChatUser},to_user.eq.${currentUser.id})`).order('created_at',{ascending:true});
     const area=document.getElementById('chatArea'); if(!area)return;
     if(!messages||messages.length===0){area.innerHTML=`<div style="text-align:center;color:#999;padding:40px">开始聊天吧~</div>`;return;}
-    area.innerHTML=messages.map((m,i)=>{const isMine=m.from_user===currentUser.id,prev=i>0?messages[i-1]:null,showDate=!prev||(new Date(m.created_at)-new Date(prev.created_at))>1800000,dateHtml=showDate?`<div class="chat-date"><span>${this.formatTime(m.created_at)}</span></div>`:'';return dateHtml+`<div class="chat-row ${isMine?'mine':''}"><div class="chat-avatar-sm" style="background:${isMine?'#d4e4ff':AVATAR_COLORS[Math.abs(this.currentChatUser.charCodeAt(0)||0)%5]}">${isMine?'👤':'🙋'}</div><div class="chat-bubble ${isMine?'mine':'other'}">${this.escapeHtml(m.content)}</div></div>`;}).join('');
+    area.innerHTML=messages.map((m,i)=>{
+      const isMine=m.from_user===currentUser.id,
+            prev=i>0?messages[i-1]:null,
+            isLastMine=i===messages.length-1||(i+1<messages.length&&messages[i+1].from_user!==currentUser.id),
+            showDate=!prev||(new Date(m.created_at)-new Date(prev.created_at))>1800000,
+            dateHtml=showDate?`<div class="chat-date"><span>${this.formatTime(m.created_at)}</span></div>`:'';
+      var lastSent = isMine && i===messages.length-1;
+      for (var j=i+1; j<messages.length; j++) { if (messages[j].from_user===currentUser.id) { lastSent=false; break; } }
+      var statusHTML = (isMine && lastSent) ?
+        `<div class="chat-status">${m.is_read?'✓ 已读':'✓ 已发送'}</div>` : '';
+      return dateHtml+`<div class="chat-row ${isMine?'mine':''}"><div class="chat-avatar-sm" style="background:${isMine?'#d4e4ff':AVATAR_COLORS[Math.abs(this.currentChatUser.charCodeAt(0)||0)%5]}">${isMine?'👤':'🙋'}</div><div class="chat-bubble-wrap"><div class="chat-bubble ${isMine?'mine':'other'}">${this.escapeHtml(m.content)}</div>${statusHTML}</div></div>`;
+    }).join('');
     setTimeout(()=>{area.scrollTop=area.scrollHeight;},50);
   },
 
   async sendChat() {
     if(!currentUser){this.toast('请先登录');return;} const input=document.getElementById('chatInputField'),text=input.value.trim(); if(!text)return;
+    const bannedInMsg = hasSensitiveWord(text);
+    if(bannedInMsg){this.toast(`消息包含敏感词，请修改`);return;}
     const{error}=await sb.from('messages').insert({from_user:currentUser.id,to_user:this.currentChatUser,content:text,is_read:false});
     if(error){this.toast('发送失败: '+error.message);return;} input.value=''; await this.renderChatMessages();
     setTimeout(()=>{const a=document.getElementById('chatArea');if(a)a.scrollTop=a.scrollHeight;},50);
   },
 
+  // ==================== SEARCH ====================
   renderSearchHistory(){const h=LocalStore.get('searchHistory',[]);document.getElementById('historyTags').innerHTML=h.map(x=>`<div class="history-tag" onclick="App.searchThis('${x}')">${x}</div>`).join('');},
   searchThis(kw){document.getElementById('searchInput').value=kw;this.doSearch(kw);},
   clearHistory(){LocalStore.set('searchHistory',[]);this.renderSearchHistory();},
   async doSearch(kw){if(!kw||kw.length<1){document.getElementById('searchResults').innerHTML='';return;}let h=LocalStore.get('searchHistory',[]).filter(x=>x!==kw);h.unshift(kw);if(h.length>10)h=h.slice(0,10);LocalStore.set('searchHistory',h);const{data:products}=await sb.from('products').select('*').eq('status','selling').ilike('title',`%${kw}%`).order('created_at',{ascending:false}).limit(PAGE_SIZE);document.getElementById('searchResults').innerHTML=(products||[]).map((p,i)=>this.productCard(p,i)).join('');if(!products||products.length===0){document.getElementById('searchResults').innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-desc">没有找到"${kw}"相关商品</div></div>`;}this.renderSearchHistory();},
 
+  // ==================== FAVORITES ====================
   async renderFavorites() {
     if(!currentUser){document.getElementById('favList').innerHTML='';document.getElementById('favEmpty').style.display='flex';return;}
     const{data:favs}=await sb.from('favorites').select('product_id').eq('user_id',currentUser.id);
@@ -372,6 +597,7 @@ const App = {
     document.getElementById('favEmpty').style.display=products?.length===0?'flex':'none';
   },
 
+  // ==================== MY PUBLISH ====================
   switchMyTab(tab){this.myPubTab=tab;document.querySelectorAll('#page-mypublish .pub-tab').forEach((t,i)=>{t.classList.toggle('active',(i===0&&tab==='selling')||(i===1&&tab==='sold')||(i===2&&tab==='all'));});this.renderMyPublish();},
   async renderMyPublish() {
     if(!currentUser){document.getElementById('myPubList').innerHTML='';document.getElementById('myPubEmpty').style.display='flex';return;}
@@ -382,6 +608,7 @@ const App = {
     document.getElementById('myPubEmpty').style.display=!products||products.length===0?'flex':'none';
   },
 
+  // ==================== AUTH ====================
   showAuth(mode){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.getElementById('page-auth').classList.add('active');document.querySelectorAll('.tab-bar').forEach(t=>t.style.display='none');document.getElementById('authTitle').textContent=mode==='login'?'登录':'注册';document.getElementById('authFormLogin').style.display=mode==='login'?'block':'none';document.getElementById('authFormRegister').style.display=mode==='register'?'block':'none';},
   closeAuth(){document.getElementById('page-auth').classList.remove('active');this.navTo('user');},
 
@@ -430,10 +657,10 @@ const App = {
   timeAgo(ts){const d=Date.now()-new Date(ts).getTime();if(d<6e4)return'刚刚';if(d<36e5)return Math.floor(d/6e4)+'分钟前';if(d<864e5)return Math.floor(d/36e5)+'小时前';if(d<6048e5)return Math.floor(d/864e5)+'天前';return this.formatTime(ts);},
   formatTime(ts){const d=new Date(ts);return`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;},
   escapeHtml(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;},
+  escapeAttr(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');},
   validateNickname(nickname){
-    const banned=['傻逼','操你','操你妈','妈的','他妈的','草泥马','cnm','fuck','shit','bitch','废物','垃圾货','白痴','弱智','脑残','去死','滚蛋','畜生','狗日的','贱人','骚货','婊子','妓女','约炮','裸聊','做爱','性交','色情','黄色','管理员','admin','官方','客服','系统','root','测试','test'];
-    const lower=nickname.toLowerCase();
-    for(const w of banned){ if(lower.includes(w.toLowerCase())){ this.toast('昵称包含敏感词，请修改'); return false; } }
+    const bannedWord = hasSensitiveWord(nickname);
+    if(bannedWord){ this.toast(`昵称包含敏感词"${bannedWord}"，请修改`); return false; }
     if(nickname.length<2) { this.toast('昵称至少2个字符'); return false; }
     if(nickname.length>12) { this.toast('昵称最多12个字符'); return false; }
     if(!/^[一-龥a-zA-Z0-9_\-·]+$/.test(nickname)) { this.toast('昵称只能包含中文、英文、数字、下划线、连字符'); return false; }
@@ -446,6 +673,7 @@ const App = {
   assistantReply(q){const b=document.getElementById('assistantBody'),um=document.createElement('div');um.className='assistant-msg user';um.textContent=q;b.appendChild(um);const bm=document.createElement('div');bm.className='assistant-msg bot';const a={'如何发布商品？':'点击底部中间的 <b>＋</b> 进入发布页，填写信息后发布即可。现在支持上传真实图片啦~','怎么联系卖家？':'在商品详情页点击 <b>"💬 我想要"</b> 即可和卖家实时聊天，消息即时推送！','如何注册账号？':'点击 <b>"我的"</b> → <b>"邮箱登录/注册"</b>，使用学校邮箱（@sxast.edu.cn）注册，填写学号完成认证。','交易安全吗？':'建议：<br>1️⃣ <b>校内当面交易</b><br>2️⃣ 仔细检查成色<br>3️⃣ 贵重物品保留凭证<br>4️⃣ 遇到问题使用<b>"举报"</b>功能','发布有什么规则？':'📋 规则：<br>• 禁止虚假信息<br>• 禁止违禁品/食品/药品<br>• 如实描述成色<br>• 已售及时标记','学校地址在哪？':'📍 山西应用科技学院<br>太原市小店区北格镇<br>建议在图书馆/食堂等公共区域交易~'};bm.innerHTML=a[q]||('收到你的问题："'+q+'"<br>点击下方快捷按钮或联系管理员获取帮助~');b.appendChild(bm);b.scrollTop=b.scrollHeight;},
   sendAssistant(){const i=document.getElementById('assistantInput'),t=i.value.trim();if(!t)return;i.value='';this.assistantReply(t);},
 
+  // ==================== ADMIN ====================
   _adminTab:'reports',
   switchAdminTab(tab){this._adminTab=tab;document.querySelectorAll('#page-admin .pub-tab').forEach((t,i)=>{t.classList.toggle('active',(i===0&&tab==='reports')||(i===1&&tab==='products'));});this.renderAdmin();},
   async renderAdmin(){
