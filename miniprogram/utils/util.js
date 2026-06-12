@@ -1,88 +1,71 @@
-/**
- * 格式化时间
- * @param {Date|string|number} date
- * @param {string} format
- */
+const padZero = n => n < 10 ? '0' + n : n;
+
 function formatTime(date, format) {
-  if (typeof date === 'string' || typeof date === 'number') {
-    date = new Date(date);
-  }
+  if (typeof date === 'string' || typeof date === 'number') date = new Date(date);
   if (!(date instanceof Date) || isNaN(date)) return '';
-
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  const hour = date.getHours();
-  const minute = date.getMinutes();
-  const second = date.getSeconds();
-
-  if (format) {
-    return format
-      .replace(/YYYY/g, year)
-      .replace(/MM/g, padZero(month))
-      .replace(/DD/g, padZero(day))
-      .replace(/HH/g, padZero(hour))
-      .replace(/mm/g, padZero(minute))
-      .replace(/ss/g, padZero(second));
-  }
-
-  return year + '/' + padZero(month) + '/' + padZero(day) + ' ' +
-    padZero(hour) + ':' + padZero(minute);
+  const y = date.getFullYear(), M = date.getMonth() + 1, d = date.getDate(), h = date.getHours(), m = date.getMinutes(), s = date.getSeconds();
+  if (format) return format.replace(/YYYY/g, y).replace(/MM/g, padZero(M)).replace(/DD/g, padZero(d)).replace(/HH/g, padZero(h)).replace(/mm/g, padZero(m)).replace(/ss/g, padZero(s));
+  return `${y}/${padZero(M)}/${padZero(d)} ${padZero(h)}:${padZero(m)}`;
 }
 
-function padZero(n) {
-  return n < 10 ? '0' + n : n;
-}
-
-/**
- * 获取相对时间描述
- */
 function timeAgo(date) {
-  if (typeof date === 'string' || typeof date === 'number') {
-    date = new Date(date);
-  }
-  const now = Date.now();
-  const diff = now - date.getTime();
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  const week = 7 * day;
-
-  if (diff < minute) return '刚刚';
-  if (diff < hour) return Math.floor(diff / minute) + '分钟前';
-  if (diff < day) return Math.floor(diff / hour) + '小时前';
-  if (diff < week) return Math.floor(diff / day) + '天前';
+  if (typeof date === 'string' || typeof date === 'number') date = new Date(date);
+  const diff = Date.now() - date.getTime();
+  if (diff < 6e4) return '刚刚';
+  if (diff < 36e5) return Math.floor(diff / 6e4) + '分钟前';
+  if (diff < 864e5) return Math.floor(diff / 36e5) + '小时前';
+  if (diff < 6048e5) return Math.floor(diff / 864e5) + '天前';
   return formatTime(date, 'MM-DD');
 }
 
-/**
- * 价格格式化
- */
-function formatPrice(price) {
-  return '¥' + (Number(price) || 0).toFixed(2);
+const catMap = {
+  textbook: { label: '教材', emoji: '📚' },
+  digital: { label: '数码', emoji: '📱' },
+  living: { label: '生活', emoji: '🏠' },
+  clothing: { label: '服饰', emoji: '👗' },
+  sports: { label: '运动', emoji: '⚽' },
+  other: { label: '其他', emoji: '📦' },
+};
+
+const condMap = ['全新', '几乎全新', '轻微使用痕迹', '正常使用痕迹'];
+
+function formatPrice(n) { return '¥' + (Number(n) || 0).toFixed(2); }
+
+const HOT_VIEW_THRESHOLD = 30;
+const NEW_PRODUCT_HOURS = 24;
+
+function renderStars(rating) {
+  var stars = '';
+  for (var i = 1; i <= 5; i++) {
+    if (rating >= i) { stars += '★'; }
+    else if (rating >= i - 0.5) { stars += '☆'; }
+    else { stars += '☆'; }
+  }
+  return stars;
 }
 
-// 分类映射
-const categoryMap = {
-  textbook: { label: '教材', icon: '📚' },
-  digital: { label: '数码', icon: '📱' },
-  living: { label: '生活', icon: '🏠' },
-  clothing: { label: '服饰', icon: '👗' },
-  sports: { label: '运动', icon: '⚽' },
-  other: { label: '其他', icon: '📦' },
-};
+function getBrowseHistory() {
+  try { return wx.getStorageSync('browseHistory') || []; } catch(e) { return []; }
+}
 
-const conditionMap = {
-  brandnew: '全新',
-  likenew: '几乎全新',
-  slightuse: '轻微使用',
-  normal: '正常使用',
-};
+function trackBrowseHistory(product) {
+  var h = getBrowseHistory();
+  h = h.filter(function(x) { return x.id !== product.id; });
+  h.unshift({ id: product.id, title: product.title, price: product.price, images: product.images, category: product.category });
+  if (h.length > 15) h = h.slice(0, 15);
+  try { wx.setStorageSync('browseHistory', h); } catch(e) {}
+}
 
-module.exports = {
-  formatTime,
-  timeAgo,
-  formatPrice,
-  categoryMap,
-  conditionMap,
-};
+function clearBrowseHistory() {
+  try { wx.removeStorageSync('browseHistory'); } catch(e) {}
+}
+
+function isHotProduct(product) {
+  return (product.view_count || 0) >= HOT_VIEW_THRESHOLD;
+}
+
+function isNewProduct(product) {
+  return (Date.now() - new Date(product.created_at).getTime()) < NEW_PRODUCT_HOURS * 3600000;
+}
+
+module.exports = { formatTime, timeAgo, formatPrice, catMap, condMap, HOT_VIEW_THRESHOLD, NEW_PRODUCT_HOURS, renderStars, getBrowseHistory, trackBrowseHistory, clearBrowseHistory, isHotProduct, isNewProduct };

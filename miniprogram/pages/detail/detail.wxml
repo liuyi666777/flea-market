@@ -10,8 +10,8 @@
   <view class="info-section">
     <view class="price-row flex-between">
       <view class="price text-primary text-bold">{{priceText}}</view>
-      <view class="text-sm text-muted" wx:if="{{product.originalPrice}}">
-        原价 ¥{{product.originalPrice}}
+      <view class="text-sm text-muted" wx:if="{{product.original_price}}">
+        原价 ¥{{product.original_price}}
       </view>
     </view>
     <view class="title text-lg text-bold mt-15">{{product.title}}</view>
@@ -20,17 +20,21 @@
         <view class="tag mr-10">{{product.categoryLabel}}</view>
         <view class="tag">{{product.conditionLabel}}</view>
       </view>
-      <view class="text-sm text-muted">{{product.timeAgo}} · {{product.viewCount}}次浏览</view>
+      <view class="text-sm text-muted">{{product.timeAgo}} · {{product.view_count || 0}}次浏览</view>
     </view>
   </view>
 
   <!-- 卖家信息 -->
   <view class="info-section flex-between">
     <view class="flex-align-center">
-      <image class="avatar" src="{{seller.avatarUrl || '/images/default-avatar.png'}}" mode="aspectFill" />
+      <image class="avatar" src="{{seller.avatar_url || '/images/default-avatar.png'}}" mode="aspectFill" />
       <view class="ml-15">
-        <view class="text-bold">{{seller.nickName || '匿名用户'}}</view>
-        <view class="text-sm text-muted mt-5" wx:if="{{seller.schoolId}}">学号: {{seller.schoolId}}</view>
+        <view class="text-bold">{{seller.nickname || '匿名用户'}}</view>
+        <view class="rating-row" wx:if="{{showRating}}">
+          <text class="rating-stars">{{ratingStars}}</text>
+          <text class="rating-text">{{ratingText}}</text>
+        </view>
+        <view class="seller-badge">已认证</view>
       </view>
     </view>
     <view class="btn btn-outline btn-sm" bindtap="contactSeller">联系卖家</view>
@@ -40,6 +44,13 @@
   <view class="info-section" wx:if="{{product.description}}">
     <view class="section-title">商品描述</view>
     <view class="description">{{product.description}}</view>
+  </view>
+
+  <!-- 举报 -->
+  <view class="info-section" wx:if="{{!isOwner}}">
+    <view class="report-btn" bindtap="reportProduct">
+      <text>⚠️ 举报此商品</text>
+    </view>
   </view>
 
   <!-- 底部操作栏 -->
@@ -55,6 +66,26 @@
 
     <view class="btn btn-primary flex-1 ml-20" wx:else bindtap="contactSeller">
       我想要
+    </view>
+  </view>
+
+  <!-- 评分弹窗 -->
+  <view class="modal-overlay" wx:if="{{showRatingModal}}" bindtap="hideRatingModal">
+    <view class="modal-sheet" catchtap="">
+      <view class="modal-title">⭐ 评价对方</view>
+      <view class="rating-modal">
+        <view class="rating-prompt">给这笔交易打个分吧</view>
+        <view class="rating-star-row">
+          <text class="rating-star-big {{ratingScore >= 1 ? 'active' : ''}}" data-score="1" bindtap="setRatingScore">★</text>
+          <text class="rating-star-big {{ratingScore >= 2 ? 'active' : ''}}" data-score="2" bindtap="setRatingScore">★</text>
+          <text class="rating-star-big {{ratingScore >= 3 ? 'active' : ''}}" data-score="3" bindtap="setRatingScore">★</text>
+          <text class="rating-star-big {{ratingScore >= 4 ? 'active' : ''}}" data-score="4" bindtap="setRatingScore">★</text>
+          <text class="rating-star-big {{ratingScore >= 5 ? 'active' : ''}}" data-score="5" bindtap="setRatingScore">★</text>
+        </view>
+        <textarea class="rating-comment" placeholder="写下你的评价...（选填）" value="{{ratingComment}}" bindinput="onRatingCommentInput" maxlength="200" />
+        <view class="btn btn-primary" bindtap="submitRating">提交评价</view>
+        <view class="modal-btn-ghost" bindtap="hideRatingModal">跳过</view>
+      </view>
     </view>
   </view>
 </view>

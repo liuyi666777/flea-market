@@ -54,6 +54,99 @@
   background: #07c160;
 }
 
+/* Browse History */
+.browse-section {
+  background: #fff;
+  padding: 0 0 16rpx;
+}
+
+.browse-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20rpx 12rpx;
+}
+
+.browse-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #666;
+}
+
+.browse-clear {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.browse-scroll {
+  white-space: nowrap;
+  padding: 0 20rpx;
+}
+
+.browse-card {
+  display: inline-flex;
+  flex-direction: column;
+  width: 180rpx;
+  margin-right: 16rpx;
+  background: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.06);
+}
+
+.browse-card-img {
+  width: 180rpx;
+  height: 140rpx;
+  background: #f5f5f8;
+}
+
+.browse-card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.browse-card-emoji {
+  font-size: 50rpx;
+}
+
+.browse-card-body {
+  padding: 10rpx 14rpx 12rpx;
+}
+
+.browse-card-title {
+  font-size: 24rpx;
+  color: #333;
+  line-height: 1.3;
+}
+
+.browse-card-price {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #ee0a24;
+  margin-top: 4rpx;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 16rpx;
+  padding: 12rpx 20rpx;
+  background: #fff;
+  border-top: 1rpx solid #f0f0f0;
+}
+
+.filter-item {
+  display: flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 20rpx;
+  border-radius: 10rpx;
+  font-size: 24rpx;
+  color: #666;
+  background: #f5f5f5;
+  border: 1rpx solid #eee;
+}
+
 .product-grid {
   display: flex;
   padding: 16rpx 20rpx;

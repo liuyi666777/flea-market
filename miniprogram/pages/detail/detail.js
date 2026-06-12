@@ -1,15 +1,20 @@
-const { timeAgo, conditionMap, categoryMap } = require('../../utils/util');
+const { timeAgo, catMap, condMap, renderStars, trackBrowseHistory } = require('../../utils/util');
+const { db } = require('../../utils/supabase');
 const app = getApp();
 
 Page({
   data: {
-    productId: '',
     product: null,
     seller: {},
     images: [],
     priceText: '',
     isFav: false,
     isOwner: false,
+    ratingStars: '',
+    ratingText: '',
+    showRating: false,
+    ratingScore: 0,
+    ratingComment: '',
   },
 
   onLoad(options) {
@@ -18,64 +23,83 @@ Page({
       setTimeout(() => wx.navigateBack(), 1500);
       return;
     }
-    this.setData({ productId: options.id });
-    this.loadDetail();
-    this.checkFav();
+    this.loadDetail(options.id);
+    this.checkFav(options.id);
   },
 
-  loadDetail() {
-    wx.cloud.callFunction({
-      name: 'product',
-      data: { action: 'detail', productId: this.data.productId },
-    }).then(res => {
-      if (!res.result.data) {
+  loadDetail(productId) {
+    db('products').select('*').eq('id', productId).single().then(res => {
+      if (res.error || !res.data || !res.data.length) {
         wx.showToast({ title: '商品不存在', icon: 'none' });
         setTimeout(() => wx.navigateBack(), 1500);
         return;
       }
-      const product = res.result.data;
-      const seller = product.seller || {};
-      const isOwner = app.globalData.isLogin &&
-        wx.getStorageSync('userInfo')?._openid === product._openid;
+      const product = res.data[0];
+      const uid = app.globalData.user && app.globalData.user.id;
+      const isOwner = uid && uid === product.user_id;
+
+      // Track browse history
+      trackBrowseHistory(product);
+
+      // Increment view count
+      db('products').update({ view_count: (product.view_count || 0) + 1 }).eq('id', productId).then(() => {});
 
       this.setData({
         product,
-        seller,
         images: product.images || [],
         priceText: '¥' + (Number(product.price) || 0).toFixed(2),
         isOwner,
         product: {
           ...product,
-          categoryLabel: categoryMap[product.category] ? categoryMap[product.category].label : '',
-          conditionLabel: conditionMap[product.condition] || '',
-          timeAgo: timeAgo(product.createdAt),
+          categoryLabel: catMap[product.category] ? catMap[product.category].label : '',
+          conditionLabel: condMap[product.condition] || '',
+          timeAgo: timeAgo(product.created_at),
         },
       });
+
+      // Load seller profile with rating
+      if (product.user_id) {
+        db('profiles').select('*').eq('id', product.user_id).single().then(r => {
+          if (r.data && r.data.length) {
+            var seller = r.data[0];
+            var sr = seller.rating || 0;
+            var src = seller.rating_count || 0;
+            this.setData({
+              seller: seller,
+              showRating: src > 0,
+              ratingStars: renderStars(sr),
+              ratingText: src > 0 ? sr.toFixed(1) + ' (' + src + '条)' : '',
+            });
+          }
+        });
+      }
     });
   },
 
-  checkFav() {
-    if (!app.globalData.isLogin) return;
-    wx.cloud.callFunction({
-      name: 'favorite',
-      data: { action: 'check', productId: this.data.productId },
-    }).then(res => {
-      this.setData({ isFav: res.result.data.isFav });
+  checkFav(productId) {
+    const uid = app.globalData.user && app.globalData.user.id;
+    if (!uid) return;
+    db('favorites').select('*').eq('user_id', uid).eq('product_id', productId).single().then(res => {
+      this.setData({ isFav: !!(res.data && res.data.length) });
     });
   },
 
   toggleFav() {
-    if (!app.globalData.isLogin) {
-      return wx.showToast({ title: '请先登录', icon: 'none' });
+    const uid = app.globalData.user && app.globalData.user.id;
+    if (!uid) return wx.showToast({ title: '请先登录', icon: 'none' });
+
+    const pid = this.data.product.id;
+    if (this.data.isFav) {
+      db('favorites').delete_().eq('user_id', uid).eq('product_id', pid).then(() => {
+        this.setData({ isFav: false });
+        wx.showToast({ title: '已取消收藏', icon: 'none' });
+      });
+    } else {
+      db('favorites').insert({ user_id: uid, product_id: pid }).then(() => {
+        this.setData({ isFav: true });
+        wx.showToast({ title: '已收藏', icon: 'none' });
+      });
     }
-    const action = this.data.isFav ? 'remove' : 'add';
-    wx.cloud.callFunction({
-      name: 'favorite',
-      data: { action, productId: this.data.productId },
-    }).then(() => {
-      this.setData({ isFav: !this.data.isFav });
-      wx.showToast({ title: action === 'add' ? '已收藏' : '已取消', icon: 'none' });
-    });
   },
 
   toggleStatus() {
@@ -83,37 +107,94 @@ Page({
     const newStatus = product.status === 'selling' ? 'sold' : 'selling';
     const tips = newStatus === 'sold' ? '确定标记为已售吗？' : '确定重新上架吗？';
 
-    wx.showModal({ title: '提示', content: tips, success: (res) => {
-      if (!res.confirm) return;
-      wx.cloud.callFunction({
-        name: 'product',
-        data: { action: 'toggleStatus', productId: product._id, status: newStatus },
-      }).then(() => {
+    wx.showModal({ title: '提示', content: tips, success: (modalRes) => {
+      if (!modalRes.confirm) return;
+      db('products').update({ status: newStatus }).eq('id', product.id).then(() => {
         product.status = newStatus;
         this.setData({ product });
         wx.showToast({ title: newStatus === 'sold' ? '已标记售出' : '已重新上架', icon: 'success' });
+
+        // Show rating modal after marking as sold (and not rating self)
+        if (newStatus === 'sold' && product.user_id && product.user_id !== app.globalData.user.id) {
+          setTimeout(() => this.showRatingModal(), 500);
+        }
       });
     }});
   },
 
-  contactSeller() {
-    if (!app.globalData.isLogin) {
-      return wx.showToast({ title: '请先登录', icon: 'none' });
+  showRatingModal() {
+    this.setData({ ratingScore: 0, ratingComment: '', showRatingModal: true });
+  },
+
+  hideRatingModal() {
+    this.setData({ showRatingModal: false });
+  },
+
+  setRatingScore(e) {
+    this.setData({ ratingScore: parseInt(e.currentTarget.dataset.score) || 0 });
+  },
+
+  onRatingCommentInput(e) {
+    this.setData({ ratingComment: e.detail.value });
+  },
+
+  submitRating() {
+    if (this.data.ratingScore < 1) {
+      wx.showToast({ title: '请选择评分', icon: 'none' });
+      return;
     }
-    const { product } = this.data;
+    var { product } = this.data;
+    db('ratings').insert({
+      from_user: app.globalData.user.id,
+      to_user: product.user_id,
+      score: this.data.ratingScore,
+      comment: this.data.ratingComment.trim(),
+    }).then(res => {
+      if (res.error) {
+        if (res.error.code === '23505') {
+          wx.showToast({ title: '您已评价过该用户', icon: 'none' });
+        } else {
+          wx.showToast({ title: '评价失败', icon: 'none' });
+        }
+      } else {
+        wx.showToast({ title: '评价成功！', icon: 'success' });
+      }
+      this.hideRatingModal();
+    });
+  },
+
+  reportProduct() {
+    const uid = app.globalData.user && app.globalData.user.id;
+    if (!uid) return wx.showToast({ title: '请先登录', icon: 'none' });
+
+    wx.showActionSheet({
+      itemList: ['虚假信息', '违禁商品', '重复发布', '其他问题'],
+      success: (res) => {
+        const reasons = ['虚假信息', '违禁商品', '重复发布', '其他问题'];
+        db('reports').insert({
+          reporter_id: uid,
+          product_id: this.data.product.id,
+          reason: reasons[res.tapIndex],
+        }).then(() => {
+          wx.showToast({ title: '举报已提交', icon: 'success' });
+        });
+      }
+    });
+  },
+
+  contactSeller() {
+    const uid = app.globalData.user && app.globalData.user.id;
+    if (!uid) return wx.showToast({ title: '请先登录', icon: 'none' });
     if (this.data.isOwner) return;
 
-    const openid = product._openid;
+    const { product } = this.data;
     wx.navigateTo({
-      url: `/pages/chat/chat?openid=${openid}&productId=${product._id}`,
+      url: `/pages/chat/chat?targetId=${product.user_id}&productId=${product.id}`,
     });
   },
 
   previewImage(e) {
-    const index = e.currentTarget.dataset.index;
-    wx.previewImage({
-      urls: this.data.images,
-      current: this.data.images[index],
-    });
+    const idx = e.currentTarget.dataset.index;
+    wx.previewImage({ urls: this.data.images, current: this.data.images[idx] });
   },
 });

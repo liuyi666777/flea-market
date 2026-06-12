@@ -16,16 +16,46 @@
       data-key="{{item.key}}"
       bindtap="switchCategory"
     >
-      <text>{{item.icon}} {{item.label}}</text>
+      <text>{{item.emoji}} {{item.label}}</text>
     </view>
   </scroll-view>
 
+  <!-- 浏览历史 -->
+  <view class="browse-section" wx:if="{{showBrowseHistory}}">
+    <view class="browse-header">
+      <text class="browse-title">🕐 最近浏览</text>
+      <text class="browse-clear" bindtap="clearBrowseHistory">清除</text>
+    </view>
+    <scroll-view class="browse-scroll" scroll-x enable-flex>
+      <view class="browse-card" wx:for="{{browseHistory}}" wx:key="id" data-id="{{item.id}}" bindtap="goHistoryDetail">
+        <image class="browse-card-img" src="{{item.images[0]}}" mode="aspectFill" wx:if="{{item.images && item.images.length}}" />
+        <view class="browse-card-img browse-card-placeholder" wx:else>
+          <text class="browse-card-emoji">{{item.catEmoji}}</text>
+        </view>
+        <view class="browse-card-body">
+          <view class="browse-card-title ellipsis">{{item.title}}</view>
+          <view class="browse-card-price">¥{{item.price}}</view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <picker mode="selector" range="{{['🕐 最新发布', '💰 价格从低到高', '💎 价格从高到低']}}" value="{{sort === 'created_at' ? 0 : (sortDir === 'asc' ? 1 : 2)}}" bindchange="setSort">
+      <view class="filter-item">{{sort === 'created_at' ? '🕐 最新发布' : (sortDir === 'asc' ? '💰 价格从低到高' : '💎 价格从高到低')}}</view>
+    </picker>
+    <picker mode="selector" range="{{['🏷️ 全部成色', '全新', '几乎全新', '轻微使用痕迹', '正常使用痕迹']}}" value="{{condition + 1}}" bindchange="setCondition">
+      <view class="filter-item">{{condition === -1 ? '🏷️ 全部成色' : ['全新', '几乎全新', '轻微使用痕迹', '正常使用痕迹'][condition]}}</view>
+    </picker>
+  </view>
+
   <!-- 商品列表 -->
   <view class="product-grid">
-    <view class="product-col" wx:for="{{leftList}}" wx:key="_id">
+    <view class="product-col" wx:for="{{leftList}}" wx:key="id">
       <product-card product="{{item}}" bind:tap="goDetail" />
     </view>
-    <view class="product-col" wx:for="{{rightList}}" wx:key="_id">
+    <view class="product-col" wx:for="{{rightList}}" wx:key="id">
       <product-card product="{{item}}" bind:tap="goDetail" />
     </view>
   </view>
