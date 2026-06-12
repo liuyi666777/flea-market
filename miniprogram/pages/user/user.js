@@ -3,51 +3,24 @@ const app = getApp();
 Page({
   data: {
     isLogin: false,
-    userInfo: null,
+    profile: null,
+    email: '',
+    isAdmin: false,
   },
 
   onShow() {
-    this.checkLoginStatus();
-  },
-
-  checkLoginStatus() {
-    app.checkLogin().then(isLogin => {
-      this.setData({
-        isLogin,
-        userInfo: app.globalData.userInfo,
-      });
+    const u = app.globalData.user;
+    const p = app.globalData.profile;
+    this.setData({
+      isLogin: !!u,
+      profile: p,
+      email: u ? u.email : '',
+      isAdmin: p ? !!p.is_admin : false,
     });
   },
 
-  doLogin() {
-    wx.getUserProfile({
-      desc: '用于完善个人资料',
-      success: (res) => {
-        const userInfo = res.userInfo;
-        wx.cloud.callFunction({
-          name: 'user',
-          data: {
-            action: 'login',
-            nickName: userInfo.nickName,
-            avatarUrl: userInfo.avatarUrl,
-          }
-        }).then(cloudRes => {
-          const info = {
-            ...userInfo,
-            ...(cloudRes.result.data || {}),
-          };
-          app.setUserInfo(info);
-          this.setData({ isLogin: true, userInfo: info });
-          wx.showToast({ title: '登录成功', icon: 'success' });
-        }).catch(err => {
-          console.error('登录失败:', err);
-          wx.showToast({ title: '登录失败', icon: 'none' });
-        });
-      },
-      fail: () => {
-        wx.showToast({ title: '需要授权才能使用完整功能', icon: 'none' });
-      }
-    });
+  showLogin() {
+    wx.navigateTo({ url: '/pages/login/login' });
   },
 
   doLogout() {
@@ -56,22 +29,24 @@ Page({
       content: '确定要退出登录吗？',
       success: (res) => {
         if (res.confirm) {
-          wx.removeStorageSync('userInfo');
-          app.globalData.userInfo = null;
-          app.globalData.isLogin = false;
-          this.setData({ isLogin: false, userInfo: null });
+          app.logout();
+          this.setData({ isLogin: false, profile: null, email: '', isAdmin: false });
         }
       }
     });
   },
 
+  goAdmin() {
+    wx.navigateTo({ url: '/pages/admin/admin' });
+  },
+
   goMyPublish() {
-    if (!this.data.isLogin) return this.doLogin();
+    if (!this.data.isLogin) return wx.showToast({ title: '请先登录', icon: 'none' });
     wx.navigateTo({ url: '/pages/my-publish/my-publish' });
   },
 
   goFavorites() {
-    if (!this.data.isLogin) return this.doLogin();
+    if (!this.data.isLogin) return wx.showToast({ title: '请先登录', icon: 'none' });
     wx.navigateTo({ url: '/pages/favorites/favorites' });
   },
 

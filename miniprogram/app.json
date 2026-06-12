@@ -9,7 +9,9 @@
     "pages/search/search",
     "pages/chat/chat",
     "pages/favorites/favorites",
-    "pages/my-publish/my-publish"
+    "pages/my-publish/my-publish",
+    "pages/login/login",
+    "pages/admin/admin"
   ],
   "window": {
     "backgroundTextStyle": "dark",
