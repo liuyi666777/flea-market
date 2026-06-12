@@ -354,7 +354,8 @@ const App = {
   async sendChat() {
     if(!currentUser){this.toast('请先登录');return;} const input=document.getElementById('chatInputField'),text=input.value.trim(); if(!text)return;
     const{error}=await sb.from('messages').insert({from_user:currentUser.id,to_user:this.currentChatUser,content:text,is_read:false});
-    if(error){this.toast('发送失败');return;} input.value=''; this.renderChatMessages();
+    if(error){this.toast('发送失败: '+error.message);return;} input.value=''; await this.renderChatMessages();
+    setTimeout(()=>{const a=document.getElementById('chatArea');if(a)a.scrollTop=a.scrollHeight;},50);
   },
 
   renderSearchHistory(){const h=LocalStore.get('searchHistory',[]);document.getElementById('historyTags').innerHTML=h.map(x=>`<div class="history-tag" onclick="App.searchThis('${x}')">${x}</div>`).join('');},
