@@ -1198,3 +1198,56 @@ html, body {
 }
 .admin-del-fab:active { transform: scale(0.9); }
 .menu-icon-wrap.red { background: #fff0f0; }
+
+/* ===== Gallery Carousel ===== */
+.gallery-wrap {
+  width: 100%;
+  height: 380px;
+  position: relative;
+  overflow: hidden;
+  background: #f0f0f5;
+}
+.gallery-slider {
+  display: flex;
+  height: 100%;
+  transition: transform 0.3s ease;
+}
+.gallery-slide {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+}
+.gallery-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 3;
+  line-height: 1;
+}
+.gallery-arrow.left { left: 8px; }
+.gallery-arrow.right { right: 8px; }
+
+/* ===== Chat Status ===== */
+.chat-bubble-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.chat-row:not(.mine) .chat-bubble-wrap { align-items: flex-start; }
+.chat-status {
+  font-size: 10px;
+  color: #999;
+  margin: 2px 12px 0;
+}
+
+/* ===== Home Tabs ===== */
+#homeTabs { background: transparent; margin: 0 16px; border-radius: 12px 12px 0 0; overflow: hidden; }
+#homeTabs .pub-tab { background: #fff; }
